@@ -73,7 +73,7 @@ else:
     model = torch.load('iwslt.pt')
 
 for i, batch in enumerate(valid_iter):
-    src = batch.src.transpose(0, 1)[:1]
+    src = batch.src.transpose(0, 1)[:1].cuda()
     src_mask = (src != SRC.vocab.stoi[BLANK_WORD]).unsqueeze(-2)
     out = greedy_decode(model, src, src_mask, max_len=60, start_symbol=TGT.vocab.stoi[BOS_WORD])
     print('Translation:', end='\t')
