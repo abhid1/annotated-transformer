@@ -85,7 +85,7 @@ for i, batch in enumerate(valid_iter):
     print()
     print('Target:', end='\t')
     for i in range(batch.trg.size(0)):
-        sym = TGT.vocab.itos(batch.trg.data[i, 0])
+        sym = TGT.vocab.itos[batch.trg.data[i, 0]]
         if sym == EOS_WORD:
             break
         print(sym, end=' ')
