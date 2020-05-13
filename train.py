@@ -139,7 +139,10 @@ if True:
     # Use standard optimizer -- As used in the paper
     model_opt = get_std_opt(model)
 
-    for epoch in range(10):
+    # Set EPOCH
+    epoch_range = 1
+
+    for epoch in range(epoch_range):
         print("=" * 80)
         print("Epoch ", epoch + 1)
         print("=" * 80)
