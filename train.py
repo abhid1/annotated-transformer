@@ -41,7 +41,7 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
         src_mask = (src != SRC.vocab.stoi[BLANK_WORD]).unsqueeze(-2)
         out = greedy_decode(model, src, src_mask, max_len=MAX_LEN, start_symbol=TGT.vocab.stoi[BOS_WORD])
         # print('Translation:', end='\t')
-
+        print('Out size (0)', out.size(0), 'Out size (1)', out.size(1))
         for k in range(out.size(0)):
             translate_str = []
             for i in range(1, out.size(1)):
@@ -53,7 +53,7 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
             # print()
             # print('Target:', end='\t')
             tgt_str = []
-            for j in range(batch.trg.size(0)):
+            for j in range(1, batch.trg.size(0)):
                 sym = TGT.vocab.itos[batch.trg.data[j, k]]
                 if sym == EOS_WORD:
                     break
