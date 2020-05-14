@@ -41,6 +41,7 @@ def run_epoch(data_iter, model, loss_compute, SRC=None, TGT=None, valid_iter=Non
         total_loss += loss
         total_tokens += batch.ntokens
         tokens += batch.ntokens
+
         if i % 50 == 1:
             elapsed = time.time() - start
             print('Iteration: %d Loss %f Tokens per Sec: %f' % (i, loss / batch.ntokens, tokens / elapsed))
@@ -50,7 +51,7 @@ def run_epoch(data_iter, model, loss_compute, SRC=None, TGT=None, valid_iter=Non
         # Validate every 150 iterations
         if i % 150 == 1:
             model.eval()
-            run_validation_bleu_score(model, SRC, TGT, valid_iter)
+            run_validation_bleu_score(model.module, SRC, TGT, valid_iter)
 
     return total_loss / total_tokens
 
@@ -178,7 +179,8 @@ if True:
     train_iter = MyIterator(train, batch_size=BATCH_SIZE, device=0, repeat=False,
                             sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=True)
     valid_iter = MyIterator(val, batch_size=BATCH_SIZE, device=0, repeat=False,
-                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
+                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False,
+                            sort=False, sort_within_batch=False, repeat=False)
     model_par = nn.DataParallel(model, device_ids=devices)
 
     #model_opt = NoamOpt(model.src_embed[0].d_model, 1, 2000,
@@ -204,6 +206,6 @@ if True:
         loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
                          MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), None, None, None)
         print(loss)
-        run_validation_bleu_score(model_par, SRC, TGT, valid_iter)
+        run_validation_bleu_score(model, SRC, TGT, valid_iter)
 else:
     model = torch.load('iwslt.pt')
