@@ -180,7 +180,7 @@ if True:
                             sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=True)
     valid_iter = MyIterator(val, batch_size=BATCH_SIZE, device=0, repeat=False,
                             sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False,
-                            sort=False, sort_within_batch=False, repeat=False)
+                            sort=False, sort_within_batch=False)
     model_par = nn.DataParallel(model, device_ids=devices)
 
     #model_opt = NoamOpt(model.src_embed[0].d_model, 1, 2000,
