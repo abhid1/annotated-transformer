@@ -88,9 +88,8 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
     for i, batch in enumerate(valid_iter):
         src = batch.src.transpose(0, 1)[:1].cuda()
         src_mask = (src != SRC.vocab.stoi[BLANK_WORD]).unsqueeze(-2)
-        out = greedy_decode(model, src, src_mask, max_len=MAX_LEN, start_symbol=TGT.vocab.stoi[BOS_WORD])
+        out = greedy_decode(model, src, src_mask, max_len=60, start_symbol=TGT.vocab.stoi[BOS_WORD])
         # print('Translation:', end='\t')
-        print('Out size (0)', out.size(0), 'Out size (1)', out.size(1))
         for k in range(out.size(0)):
             translate_str = []
             for i in range(1, out.size(1)):
@@ -115,6 +114,8 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
 
     print('Translate arr:', translate)
     print('Target arr:', tgt)
+    print('Length of translate arr', len(translate))
+    print('Length of target arr', len(tgt))
 
 
 SRC = data.Field(tokenize=tokenize_de, pad_token=BLANK_WORD)
@@ -180,7 +181,7 @@ if True:
                             sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=True)
     valid_iter = MyIterator(val, batch_size=BATCH_SIZE, device=0, repeat=False,
                             sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False,
-                            sort=False, sort_within_batch=False)
+                            sort=False)
     model_par = nn.DataParallel(model, device_ids=devices)
 
     #model_opt = NoamOpt(model.src_embed[0].d_model, 1, 2000,
