@@ -204,6 +204,6 @@ if True:
         loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
                          MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), None, None, None)
         print(loss)
-        run_validation_bleu_score(model, SRC, TGT, valid_iter)
+        run_validation_bleu_score(model_par, SRC, TGT, valid_iter)
 else:
     model = torch.load('iwslt.pt')
