@@ -55,7 +55,7 @@ def run_epoch(data_iter, model, loss_compute, SRC=None, TGT=None, valid_iter=Non
     return total_loss / total_tokens
 
 
-def batch_size_fn(new, count):
+def batch_size_fn(new, count, size_so_far):
     """
     Keep augmenting batch and calculate total number of tokens + padding.
     """
