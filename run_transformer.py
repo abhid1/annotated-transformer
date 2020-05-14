@@ -15,6 +15,7 @@ from transformer.multi_gpu_loss_compute import MultiGPULossCompute
 from transformer.my_iterator import MyIterator, rebatch
 from transformer.noam_opt import NoamOpt
 from transformer.noam_opt import get_std_opt
+from transformer.arguments import init_config
 
 # GPUs to use
 devices = [0]  # Or use [0, 1] etc for multiple GPUs
@@ -73,10 +74,12 @@ def batch_size_fn(new, count, size_so_far):
 
 
 def tokenize_de(text):
+    spacy_de = spacy.load('de')
     return [tok.text for tok in spacy_de.tokenizer(text)]
 
 
 def tokenize_en(text):
+    spacy_en = spacy.load('en')
     return [tok.text for tok in spacy_en.tokenizer(text)]
 
 
@@ -118,53 +121,42 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
     print('Length of target arr', len(tgt))
 
 
-SRC = data.Field(tokenize=tokenize_de, pad_token=BLANK_WORD)
-TGT = data.Field(tokenize=tokenize_en, init_token=BOS_WORD,
-                 eos_token=EOS_WORD, pad_token=BLANK_WORD)
+def train(args):
+    SRC = data.Field(tokenize=tokenize_de, pad_token=BLANK_WORD)
+    TGT = data.Field(tokenize=tokenize_en, init_token=BOS_WORD,
+                     eos_token=EOS_WORD, pad_token=BLANK_WORD)
 
-if True:
-    # Load spacy stuff
-    spacy_de = spacy.load('de')
-    spacy_en = spacy.load('en')
-
-    # Maximum Sentence Length
-    MAX_LEN = 100
-
+    # TODO: Add the ability to load different datasets
     # Load IWSLT Data ---> German to English Translation
-    train, val, test = datasets.IWSLT.splits(exts=('.de', '.en'), fields=(SRC, TGT),
-                                             filter_pred=lambda x: len(vars(x)['src']) <= MAX_LEN and len(
-                                                 vars(x)['trg']) <= MAX_LEN)
+    if args.dataset == 'IWSLT':
+        train, val, test = datasets.IWSLT.splits(exts=('.de', '.en'), fields=(SRC, TGT),
+                                                 filter_pred=lambda x: len(vars(x)['src']) <= args.max_length and len(
+                                                     vars(x)['trg']) <= args.max_length)
+    else:
+        train, val, test = datasets.Multi30k.splits(exts=('.de', '.en'), fields=(SRC, TGT),
+                                                 filter_pred=lambda x: len(vars(x)['src']) <= args.max_length and len(
+                                                     vars(x)['trg']) <= args.max_length)
+
     # Frequency of words in the vocabulary
-    MIN_FREQ = 2
-    SRC.build_vocab(train.src, min_freq=MIN_FREQ)
-    TGT.build_vocab(train.trg, min_freq=MIN_FREQ)
+    SRC.build_vocab(train.src, min_freq=args.min_freq)
+    TGT.build_vocab(train.trg, min_freq=args.min_freq)
 
     print("Size of source vocabulary:", len(SRC.vocab))
     print("Size of target vocabulary:", len(TGT.vocab))
 
-    # Number of encoder & decoder blocks
-    n = 6
-
-    # Size of hidden dimension for all layers
-    d_model = 512
-
-    # Size of dimension for feed forward part
-    ff_dim = 2048
-
-    # Number of heads
-    h = 8
-
-    # Dropout
-    dropout = 0.1
-
     pad_idx = TGT.vocab.stoi[BLANK_WORD]
-    model = make_model(len(SRC.vocab), len(TGT.vocab), n=n, d_model=d_model, d_ff=ff_dim, h=h, dropout=dropout)
-    print("Model made with n:", n, "hidden_dim:", d_model, "feed forward dim:", ff_dim, "heads:", h,
-          "dropout:", dropout)
+    model = make_model(len(SRC.vocab), len(TGT.vocab), n=args.num_blocks, d_model=args.hidden_dim, d_ff=args.ff_dim,
+                       h=args.num_heads, dropout=args.dropout)
+    print("Model made with n:", args.num_blocks, "hidden_dim:", args.hidden_dim, "feed forward dim:", args.ff_dim,
+          "heads:", args.num_heads, "dropout:", args.dropout)
 
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     params = sum([np.prod(p.size()) for p in model_parameters])
     print("Number of parameters: ", params)
+
+    if args.load_model:
+        print("Loading model from [%s]" % args.load_model)
+        model.load_state_dict(torch.load(args.load_model))
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
     # model.cuda()
@@ -175,11 +167,9 @@ if True:
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
     # criterion.cuda()
 
-    BATCH_SIZE = 3000  # Was 12000, but I only have 12 GB RAM on my single GPU.
-
-    train_iter = MyIterator(train, batch_size=BATCH_SIZE, device=0, repeat=False,
+    train_iter = MyIterator(train, batch_size=args.batch_size, device=0, repeat=False,
                             sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=True)
-    valid_iter = MyIterator(val, batch_size=BATCH_SIZE, device=0, repeat=False,
+    valid_iter = MyIterator(val, batch_size=args.batch_size, device=0, repeat=False,
                             sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False,
                             sort=False)
     model_par = nn.DataParallel(model, device_ids=devices)
@@ -190,10 +180,10 @@ if True:
     # Use standard optimizer -- As used in the paper
     model_opt = get_std_opt(model)
 
-    # Set EPOCH
-    epoch_range = 1
+    # TODO: Keep track of current loss, but instead do BLEU
+    best_loss = 100000000
 
-    for epoch in range(epoch_range):
+    for epoch in range(args.epoch):
         print("=" * 80)
         print("Epoch ", epoch + 1)
         print("=" * 80)
@@ -208,5 +198,22 @@ if True:
                          MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), None, None, None)
         print(loss)
         run_validation_bleu_score(model, SRC, TGT, valid_iter)
-else:
-    model = torch.load('iwslt.pt')
+
+        if best_loss > loss:
+            best_loss = loss
+            # TODO: Save when BLEU score is higher than the most highest
+            model_file = args.save_to + args.exp_name + 'validation.bin'
+            print('Saving model without optimizer [%s]' % model_file)
+            torch.save(model_par.state_dict(), model_file)
+
+
+if __name__ == '__main__':
+    args = init_config()
+    print(args)
+
+    # Seed the RNG
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+
+    if args.mode == 'train':
+        train(args)

@@ -7,7 +7,7 @@ from torch.autograd import Variable
 
 from transformer.batch import Batch
 from transformer.model import make_model
-from train import run_epoch
+from run_transformer import run_epoch
 from transformer.greedy import greedy_decode
 from transformer.label_smoothing import LabelSmoothing
 from transformer.noam_opt import NoamOpt
