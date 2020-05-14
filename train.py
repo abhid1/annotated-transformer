@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 # date: 2018-12-02 20:54
 import spacy
+import time
 import torch
 import torch.nn as nn
 import numpy as np
 from torchtext import data, datasets
 
-from transformer.flow import make_model, batch_size_fn, run_epoch
+from transformer.model import make_model
 from transformer.greedy import greedy_decode
 from transformer.label_smoothing import LabelSmoothing
 from transformer.multi_gpu_loss_compute import MultiGPULossCompute
@@ -21,6 +22,53 @@ devices = [0]  # Or use [0, 1] etc for multiple GPUs
 BOS_WORD = '<s>'
 EOS_WORD = '</s>'
 BLANK_WORD = '<blank>'
+
+max_src_in_batch = 25000
+max_tgt_in_batch = 25000
+
+
+def run_epoch(data_iter, model, loss_compute, SRC=None, TGT=None, valid_iter=None):
+    """
+    Standard Training and Logging Function
+    """
+    start = time.time()
+    total_tokens = 0
+    total_loss = 0
+    tokens = 0
+    for i, batch in enumerate(data_iter):
+        out = model.forward(batch.src, batch.trg, batch.src_mask, batch.trg_mask)
+        loss = loss_compute(out, batch.trg_y, batch.ntokens)
+        total_loss += loss
+        total_tokens += batch.ntokens
+        tokens += batch.ntokens
+        if i % 50 == 1:
+            elapsed = time.time() - start
+            print('Iteration: %d Loss %f Tokens per Sec: %f' % (i, loss / batch.ntokens, tokens / elapsed))
+            start = time.time()
+            tokens = 0
+
+        # Validate every 150 iterations
+        if i % 150 == 1:
+            model.eval()
+            run_validation_bleu_score(model, SRC, TGT, valid_iter)
+
+    return total_loss / total_tokens
+
+
+def batch_size_fn(new, count):
+    """
+    Keep augmenting batch and calculate total number of tokens + padding.
+    """
+    global max_src_in_batch
+    global max_tgt_in_batch
+    if count == 1:
+        max_src_in_batch = 0
+        max_tgt_in_batch = 0
+    max_src_in_batch = max(max_src_in_batch, len(new.src))
+    max_tgt_in_batch = max(max_tgt_in_batch, len(new.trg) + 2)
+    src_elements = count * max_src_in_batch
+    tgt_elements = count * max_tgt_in_batch
+    return max(src_elements, tgt_elements)
 
 
 def tokenize_de(text):
@@ -149,12 +197,12 @@ if True:
         print("Training...")
         model_par.train()
         run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
-                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt))
+                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), SRC, TGT, valid_iter)
 
         print("Validation...")
         model_par.eval()
         loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
-                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None))
+                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), None, None, None)
         print(loss)
         run_validation_bleu_score(model, SRC, TGT, valid_iter)
 else:
