@@ -27,6 +27,9 @@ BLANK_WORD = '<blank>'
 max_src_in_batch = 25000
 max_tgt_in_batch = 25000
 
+spacy_de = spacy.load('de')
+spacy_en = spacy.load('en')
+
 
 def run_epoch(data_iter, model, loss_compute, SRC=None, TGT=None, valid_iter=None):
     """
@@ -74,12 +77,10 @@ def batch_size_fn(new, count, size_so_far):
 
 
 def tokenize_de(text):
-    spacy_de = spacy.load('de')
     return [tok.text for tok in spacy_de.tokenizer(text)]
 
 
 def tokenize_en(text):
-    spacy_en = spacy.load('en')
     return [tok.text for tok in spacy_en.tokenizer(text)]
 
 
@@ -122,6 +123,7 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
 
 
 def train(args):
+
     SRC = data.Field(tokenize=tokenize_de, pad_token=BLANK_WORD)
     TGT = data.Field(tokenize=tokenize_en, init_token=BOS_WORD,
                      eos_token=EOS_WORD, pad_token=BLANK_WORD)
