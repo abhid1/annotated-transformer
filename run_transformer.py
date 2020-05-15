@@ -116,17 +116,16 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
             print()
 
             translate.append(translate_str)
-            tgt.append([tgt_str])
+            tgt.append(tgt_str)
 
     # TODO: Calculate BLEU Score
     # Essential for sacrebleu calculations
     translation_sentences = [" ".join(x) for x in translate]
     target_sentences = [" ".join(x) for x in tgt]
 
-    print('Translation sentences', translation_sentences)
-    print('Target sentences', target_sentences)
+    bleu_validation = evaluate_bleu(translation_sentences, target_sentences)
 
-    return evaluate_bleu(translation_sentences, target_sentences)
+    print('Validation BLEU Score', bleu_validation)
 
 
 def train(args):
