@@ -229,6 +229,7 @@ def test(args):
     SRC.build_vocab(train.src, min_freq=args.min_freq)
     TGT.build_vocab(train.trg, min_freq=args.min_freq)
 
+    print('Running test...')
     print("Size of source vocabulary:", len(SRC.vocab))
     print("Size of target vocabulary:", len(TGT.vocab))
 
@@ -241,7 +242,7 @@ def test(args):
 
     if args.load_model:
         print("Loading model from [%s]" % args.load_model)
-        model.load_state_dict(torch.load(args.load_model))
+        model.load_state_dict(torch.load(args.load_model), strict=False)
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
     model.cuda()
