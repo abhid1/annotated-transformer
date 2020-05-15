@@ -17,6 +17,8 @@ from transformer.noam_opt import NoamOpt
 from transformer.noam_opt import get_std_opt
 from transformer.arguments import init_config
 
+from transformer.metrics import evaluate_bleu
+
 # GPUs to use
 devices = [0]  # Or use [0, 1] etc for multiple GPUs
 
@@ -116,6 +118,16 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
             translate.append(translate_str)
             tgt.append([tgt_str])
 
+    # TODO: Calculate BLEU Score
+    # Essential for sacrebleu calculations
+    translation_sentences = [" ".join(x) for x in translate]
+    target_sentences = [" ".join(x) for x in tgt[0]]
+
+    print(translation_sentences)
+    print(target_sentences)
+
+    return evaluate_bleu(translation_sentences, target_sentences)
+
 
 def train(args):
 
@@ -123,7 +135,6 @@ def train(args):
     TGT = data.Field(tokenize=tokenize_en, init_token=BOS_WORD,
                      eos_token=EOS_WORD, pad_token=BLANK_WORD, lower=args.lower)
 
-    # TODO: Add the ability to load different datasets
     # Load IWSLT Data ---> German to English Translation
     if args.dataset == 'IWSLT':
         train, val, test = datasets.IWSLT.splits(exts=('.de', '.en'), fields=(SRC, TGT),
