@@ -97,11 +97,8 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
         for k in range(out.size(0)):
             translate_str = []
             for i in range(1, out.size(1)):
-                # sym = TGT.vocab.itos[out[k, i]]
-                # if sym == EOS_WORD:
-                #     break
-                sym = out[k, i].item()
-                if TGT.vocab.stoi["</s>"] == sym:
+                sym = TGT.vocab.itos[out[k, i]]
+                if sym == EOS_WORD:
                     break
                 # print(sym, end=' ')
                 translate_str.append(sym)
@@ -109,23 +106,15 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
             # print('Target:', end='\t')
             tgt_str = []
             for j in range(1, batch.trg.size(0)):
-                # sym = TGT.vocab.itos[batch.trg.data[j, k]]
-                # if sym == EOS_WORD:
-                #     break
-                sym = batch.trg[j, k].item()
-                if TGT.vocab.stoi["</s>"] == sym:
+                sym = TGT.vocab.itos[batch.trg.data[j, k]]
+                if sym == EOS_WORD:
                     break
                 # print(sym, end=' ')
-                tgt.append(sym)
+                tgt_str.append(sym)
             print()
 
             translate.append(translate_str)
             tgt.append([tgt_str])
-
-    print('Translate arr:', translate)
-    print('Target arr:', tgt)
-    print('Length of translate arr', len(translate))
-    print('Length of target arr', len(tgt))
 
 
 def train(args):
