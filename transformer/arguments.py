@@ -4,7 +4,7 @@ import argparse
 def init_config():
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', default=42, type=int, help='random seed')
-    parser.add_argument('--mode', choices=['train, test'], default='train', help='execution mode')
+    parser.add_argument('--mode', choices=['train', 'test'], default='train', help='execution mode')
     parser.add_argument('--exp_name', default='IWSLTOriginal', type=str, help='name of the experiment')
 
     # Parameters for the model
@@ -15,7 +15,7 @@ def init_config():
     parser.add_argument('--num_heads', default=8, type=int, help='number of multi-head attention heads')
 
     # Data
-    parser.add_argument('--dataset', choices=['IWSLT, MULTI30K'], default='MULTI30k',
+    parser.add_argument('--dataset', choices=['IWSLT', 'MULTI30K'], default='MULTI30k',
                         help='Choose either IWSLT or MULTI30K')
     parser.add_argument('--tokenize', default=True, type=bool, help='tokenize the dataset')
     parser.add_argument('--lower', default=True, type=bool, help='lowercase the dataset')
