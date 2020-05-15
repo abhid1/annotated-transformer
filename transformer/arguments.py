@@ -19,7 +19,7 @@ def init_config():
                         help='Choose either IWSLT or MULTI30K')
     parser.add_argument('--tokenize', default=True, type=bool, help='tokenize the dataset')
     parser.add_argument('--lower', default=True, type=bool, help='lowercase the dataset')
-    parser.add_argument('--min_freq', type=int, default=2, help='min frequency')
+    parser.add_argument('--min_freq', type=int, default=3, help='min frequency')
     parser.add_argument('--max_length', type=int, default=100, help='max length of sentences')
 
     # Training parameters

@@ -97,8 +97,11 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
         for k in range(out.size(0)):
             translate_str = []
             for i in range(1, out.size(1)):
-                sym = TGT.vocab.itos[out[k, i]]
-                if sym == EOS_WORD:
+                # sym = TGT.vocab.itos[out[k, i]]
+                # if sym == EOS_WORD:
+                #     break
+                sym = out[k, j].item()
+                if TGT.vocab.stoi["</s>"] == sym:
                     break
                 # print(sym, end=' ')
                 translate_str.append(sym)
@@ -106,8 +109,11 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
             # print('Target:', end='\t')
             tgt_str = []
             for j in range(1, batch.trg.size(0)):
-                sym = TGT.vocab.itos[batch.trg.data[j, k]]
-                if sym == EOS_WORD:
+                # sym = TGT.vocab.itos[batch.trg.data[j, k]]
+                # if sym == EOS_WORD:
+                #     break
+                sym = batch.trg[j, k].item()
+                if TGT.vocab.stoi["</s>"] == sym:
                     break
                 # print(sym, end=' ')
                 tgt.append(sym)
@@ -124,9 +130,9 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
 
 def train(args):
 
-    SRC = data.Field(tokenize=tokenize_de, pad_token=BLANK_WORD)
+    SRC = data.Field(tokenize=tokenize_de, pad_token=BLANK_WORD, lower=args.lower)
     TGT = data.Field(tokenize=tokenize_en, init_token=BOS_WORD,
-                     eos_token=EOS_WORD, pad_token=BLANK_WORD)
+                     eos_token=EOS_WORD, pad_token=BLANK_WORD, lower=args.lower)
 
     # TODO: Add the ability to load different datasets
     # Load IWSLT Data ---> German to English Translation
