@@ -205,7 +205,7 @@ def train(args):
             best_bleu = bleu_score
             model_file = args.save_to + args.exp_name + 'validation.bin'
             print('Saving model without optimizer [%s]' % model_file)
-            torch.save(model_par.state_dict(), model_file)
+            torch.save(model.state_dict(), model_file)
 
 
 def test(args):
@@ -242,7 +242,7 @@ def test(args):
 
     if args.load_model:
         print("Loading model from [%s]" % args.load_model)
-        model.load_state_dict(torch.load(args.load_model), strict=False)
+        model.load_state_dict(torch.load(args.load_model))
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
     model.cuda()
