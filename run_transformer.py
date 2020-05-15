@@ -205,7 +205,7 @@ def train(args):
         print("Validation...")
         model_par.eval()
         loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
-                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), None, None,
+                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), SRC, TGT,
                          valid_iter, is_valid=True)
         print(loss)
         run_validation_bleu_score(model, SRC, TGT, valid_iter)
