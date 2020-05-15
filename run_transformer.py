@@ -100,7 +100,7 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
                 # sym = TGT.vocab.itos[out[k, i]]
                 # if sym == EOS_WORD:
                 #     break
-                sym = out[k, j].item()
+                sym = out[k, i].item()
                 if TGT.vocab.stoi["</s>"] == sym:
                     break
                 # print(sym, end=' ')
