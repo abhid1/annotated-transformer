@@ -247,10 +247,8 @@ def test(args):
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
     model.cuda()
 
-    #test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=False,
-    #                       sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
-    test_iter = data.Iterator(test, batch_size=args.batch_size, train=False, sort=False, repeat=False,
-                  device=0)
+    test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=False,
+                           sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
 
     model_par = nn.DataParallel(model, device_ids=devices)
     model_par.eval()
