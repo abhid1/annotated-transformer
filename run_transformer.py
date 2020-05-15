@@ -209,8 +209,8 @@ def train(args):
         print('Validation loss:', loss)
         bleu_score = run_validation_bleu_score(model, SRC, TGT, valid_iter)
 
-        if best_blue < bleu_score:
-            best_loss = loss
+        if best_bleu < bleu_score:
+            best_bleu = bleu_score
             # TODO: Save when BLEU score is higher than the most highest
             model_file = args.save_to + args.exp_name + 'validation.bin'
             print('Saving model without optimizer [%s]' % model_file)
