@@ -33,7 +33,7 @@ spacy_de = spacy.load('de')
 spacy_en = spacy.load('en')
 
 
-def run_epoch(data_iter, model, loss_compute, SRC=None, TGT=None, valid_iter=None):
+def run_epoch(data_iter, model, loss_compute, SRC=None, TGT=None, valid_iter=None, is_valid=False):
     """
     Standard Training and Logging Function
     """
@@ -54,9 +54,12 @@ def run_epoch(data_iter, model, loss_compute, SRC=None, TGT=None, valid_iter=Non
             start = time.time()
             tokens = 0
 
-        # Validate every 150 iterations
-        if i % 150 == 1:
+        # Test Validate every 150 iterations
+        if i % 150 == 1 and valid_iter is not None:
             model.eval()
+            run_validation_bleu_score(model.module, SRC, TGT, valid_iter)
+
+        if is_valid:
             run_validation_bleu_score(model.module, SRC, TGT, valid_iter)
 
     return total_loss / total_tokens
@@ -113,7 +116,6 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
                     break
                 # print(sym, end=' ')
                 tgt_str.append(sym)
-            print()
 
             translate.append(translate_str)
             tgt.append(tgt_str)
@@ -197,12 +199,14 @@ def train(args):
         print("Training...")
         model_par.train()
         run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
-                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), SRC, TGT, valid_iter)
+                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), SRC, TGT, valid_iter,
+                  is_valid=False)
 
         print("Validation...")
         model_par.eval()
         loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
-                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), None, None, None)
+                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), None, None,
+                         valid_iter, is_valid=True)
         print(loss)
         run_validation_bleu_score(model, SRC, TGT, valid_iter)
 
