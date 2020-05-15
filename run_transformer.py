@@ -252,7 +252,7 @@ def test(args):
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
     criterion.cuda()
 
-    test_iter = MyIterator(test, batch_size=args.batch_size, device=devices, repeat=False,
+    test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=False,
                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
 
     model_par = nn.DataParallel(model, device_ids=devices)
