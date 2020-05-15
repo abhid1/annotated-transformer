@@ -124,10 +124,9 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
     # Essential for sacrebleu calculations
     translation_sentences = [" ".join(x) for x in translate]
     target_sentences = [" ".join(x) for x in tgt]
-
     bleu_validation = evaluate_bleu(translation_sentences, target_sentences)
-
     print('Validation BLEU Score', bleu_validation)
+    return bleu_validation
 
 
 def train(args):
@@ -190,7 +189,7 @@ def train(args):
     model_opt = get_std_opt(model)
 
     # TODO: Keep track of current loss, but instead do BLEU
-    best_loss = 100000000
+    best_bleu = 0
 
     for epoch in range(args.epoch):
         print("=" * 80)
@@ -207,10 +206,10 @@ def train(args):
         loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
                          MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), SRC, TGT,
                          valid_iter, is_valid=True)
-        print(loss)
-        run_validation_bleu_score(model, SRC, TGT, valid_iter)
+        print('Validation loss:', loss)
+        bleu_score = run_validation_bleu_score(model, SRC, TGT, valid_iter)
 
-        if best_loss > loss:
+        if best_blue < bleu_score:
             best_loss = loss
             # TODO: Save when BLEU score is higher than the most highest
             model_file = args.save_to + args.exp_name + 'validation.bin'
