@@ -33,7 +33,7 @@ spacy_de = spacy.load('de')
 spacy_en = spacy.load('en')
 
 
-def run_epoch(data_iter, model, loss_compute, SRC=None, TGT=None, valid_iter=None, is_valid=False):
+def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_iter=None, is_valid=False):
     """
     Standard Training and Logging Function
     """
@@ -54,8 +54,7 @@ def run_epoch(data_iter, model, loss_compute, SRC=None, TGT=None, valid_iter=Non
             start = time.time()
             tokens = 0
 
-        # Test Validate every 150 iterations
-        if i % 150 == 1 and valid_iter is not None:
+        if i % args.valid_every == 1 and valid_iter is not None:
             model.eval()
             run_validation_bleu_score(model.module, SRC, TGT, valid_iter)
 
@@ -98,29 +97,23 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
         src = batch.src.transpose(0, 1)[:1].cuda()
         src_mask = (src != SRC.vocab.stoi[BLANK_WORD]).unsqueeze(-2)
         out = greedy_decode(model, src, src_mask, max_len=60, start_symbol=TGT.vocab.stoi[BOS_WORD])
-        # print('Translation:', end='\t')
         for k in range(out.size(0)):
             translate_str = []
             for i in range(1, out.size(1)):
                 sym = TGT.vocab.itos[out[k, i]]
                 if sym == EOS_WORD:
                     break
-                # print(sym, end=' ')
                 translate_str.append(sym)
-            # print()
-            # print('Target:', end='\t')
             tgt_str = []
             for j in range(1, batch.trg.size(0)):
                 sym = TGT.vocab.itos[batch.trg.data[j, k]]
                 if sym == EOS_WORD:
                     break
-                # print(sym, end=' ')
                 tgt_str.append(sym)
 
             translate.append(translate_str)
             tgt.append(tgt_str)
 
-    # TODO: Calculate BLEU Score
     # Essential for sacrebleu calculations
     translation_sentences = [" ".join(x) for x in translate]
     target_sentences = [" ".join(x) for x in tgt]
@@ -188,7 +181,6 @@ def train(args):
     # Use standard optimizer -- As used in the paper
     model_opt = get_std_opt(model)
 
-    # TODO: Keep track of current loss, but instead do BLEU
     best_bleu = 0
 
     for epoch in range(args.epoch):
@@ -198,23 +190,108 @@ def train(args):
         print("Training...")
         model_par.train()
         run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
-                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), SRC, TGT, valid_iter,
-                  is_valid=False)
+                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args, SRC, TGT,
+                  valid_iter, is_valid=False)
 
         print("Validation...")
         model_par.eval()
         loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
-                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), SRC, TGT,
+                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args, SRC, TGT,
                          valid_iter, is_valid=True)
         print('Validation loss:', loss)
         bleu_score = run_validation_bleu_score(model, SRC, TGT, valid_iter)
 
         if best_bleu < bleu_score:
             best_bleu = bleu_score
-            # TODO: Save when BLEU score is higher than the most highest
             model_file = args.save_to + args.exp_name + 'validation.bin'
             print('Saving model without optimizer [%s]' % model_file)
             torch.save(model_par.state_dict(), model_file)
+
+
+def test(args):
+    # TODO: Add testing configurations
+    SRC = data.Field(tokenize=tokenize_de, pad_token=BLANK_WORD, lower=args.lower)
+    TGT = data.Field(tokenize=tokenize_en, init_token=BOS_WORD,
+                     eos_token=EOS_WORD, pad_token=BLANK_WORD, lower=args.lower)
+
+    # Load IWSLT Data ---> German to English Translation
+    if args.dataset == 'IWSLT':
+        train, val, test = datasets.IWSLT.splits(exts=('.de', '.en'), fields=(SRC, TGT),
+                                                 filter_pred=lambda x: len(vars(x)['src']) <= args.max_length and len(
+                                                     vars(x)['trg']) <= args.max_length)
+    else:
+        train, val, test = datasets.Multi30k.splits(exts=('.de', '.en'), fields=(SRC, TGT),
+                                                    filter_pred=lambda x: len(
+                                                        vars(x)['src']) <= args.max_length and len(
+                                                        vars(x)['trg']) <= args.max_length)
+
+    # Frequency of words in the vocabulary
+    SRC.build_vocab(train.src, min_freq=args.min_freq)
+    TGT.build_vocab(train.trg, min_freq=args.min_freq)
+
+    print("Size of source vocabulary:", len(SRC.vocab))
+    print("Size of target vocabulary:", len(TGT.vocab))
+
+    pad_idx = TGT.vocab.stoi[BLANK_WORD]
+
+    model = make_model(len(SRC.vocab), len(TGT.vocab), n=args.num_blocks, d_model=args.hidden_dim, d_ff=args.ff_dim,
+                       h=args.num_heads, dropout=args.dropout)
+    print("Model made with n:", args.num_blocks, "hidden_dim:", args.hidden_dim, "feed forward dim:", args.ff_dim,
+          "heads:", args.num_heads, "dropout:", args.dropout)
+
+    if args.load_model:
+        print("Loading model from [%s]" % args.load_model)
+        model.load_state_dict(torch.load(args.load_model))
+
+    # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
+    model.cuda()
+
+    # Used by original authors, hurts perplexity but improves BLEU score
+    criterion = LabelSmoothing(size=len(TGT.vocab), padding_idx=pad_idx, smoothing=0.1)
+
+    # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
+    criterion.cuda()
+
+    test_iter = MyIterator(test, batch_size=args.batch_size, device=devices, repeat=False,
+                           sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
+
+    model_par = nn.DataParallel(model, device_ids=devices)
+    model_par.eval()
+
+    translate = []
+    tgt = []
+
+    start_infer_time = time.time()
+
+    for i, batch in enumerate(test_iter):
+        src = batch.src.transpose(0, 1)[:1].cuda()
+        src_mask = (src != SRC.vocab.stoi[BLANK_WORD]).unsqueeze(-2)
+        out = greedy_decode(model_par.module, src, src_mask, max_len=60, start_symbol=TGT.vocab.stoi[BOS_WORD])
+        # print('Translation:', end='\t')
+        for k in range(out.size(0)):
+            translate_str = []
+            for l in range(1, out.size(1)):
+                sym = TGT.vocab.itos[out[k, l]]
+                if sym == EOS_WORD:
+                    break
+                translate_str.append(sym)
+            tgt_str = []
+            for j in range(1, batch.trg.size(0)):
+                sym = TGT.vocab.itos[batch.trg.data[j, k]]
+                if sym == EOS_WORD:
+                    break
+                tgt_str.append(sym)
+
+            translate.append(translate_str)
+            tgt.append(tgt_str)
+
+    print("Time for inference: ", time.time() - start_infer_time)
+
+    # Essential for sacrebleu calculations
+    translation_sentences = [" ".join(x) for x in translate]
+    target_sentences = [" ".join(x) for x in tgt]
+    bleu_validation = evaluate_bleu(translation_sentences, target_sentences)
+    print('Test BLEU Score', bleu_validation)
 
 
 if __name__ == '__main__':
@@ -227,3 +304,5 @@ if __name__ == '__main__':
 
     if args.mode == 'train':
         train(args)
+    elif args.mode == 'test':
+        test(args)

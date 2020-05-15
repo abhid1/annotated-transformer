@@ -32,6 +32,7 @@ def init_config():
     parser.add_argument('--save_to', default='saved_model/', type=str, help='save trained model to')
     parser.add_argument('--dropout', default=0.1, type=float,
                         help='set the dropout for the model')
+    parser.add_argument('--valid_every', default=150, type=int, help='how often validate bleu in epoch')
 
     args = parser.parse_args()
 
