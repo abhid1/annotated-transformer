@@ -291,6 +291,10 @@ def test(args):
     # Essential for sacrebleu calculations
     translation_sentences = [" ".join(x) for x in translate]
     target_sentences = [" ".join(x) for x in tgt]
+
+    print('Translation sentences', translation_sentences)
+    print('Target sentences', target_sentences)
+
     bleu_validation = evaluate_bleu(translation_sentences, target_sentences)
     print('Test BLEU Score', bleu_validation)
 
