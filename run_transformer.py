@@ -245,7 +245,7 @@ def test(args):
         model.load_state_dict(torch.load(args.load_model))
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
-    # model.cuda()
+    model.cuda()
 
     test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=True,
                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
