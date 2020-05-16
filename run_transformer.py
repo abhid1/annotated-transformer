@@ -247,7 +247,7 @@ def test(args):
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
     model.cuda()
 
-    test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=True,
+    test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=False,
                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
 
     model_par = nn.DataParallel(model, device_ids=devices)
@@ -258,33 +258,9 @@ def test(args):
 
     start_infer_time = time.time()
 
-    # for i, batch in enumerate(test_iter):
-    #     src = batch.src.transpose(0, 1)[:1].cuda()
-    #     src_mask = (src != SRC.vocab.stoi[BLANK_WORD]).unsqueeze(-2)
-    #     out = greedy_decode(model_par.module, src, src_mask, max_len=60, start_symbol=TGT.vocab.stoi[BOS_WORD])
-    #     # print('Translation:', end='\t')
-    #     for k in range(out.size(0)):
-    #         translate_str = []
-    #         for l in range(1, out.size(1)):
-    #             sym = TGT.vocab.itos[out[k, l]]
-    #             if sym == EOS_WORD:
-    #                 break
-    #             translate_str.append(sym)
-    #         tgt_str = []
-    #         for j in range(1, batch.trg.size(0)):
-    #             sym = TGT.vocab.itos[batch.trg.data[j, k]]
-    #             if sym == EOS_WORD:
-    #                 break
-    #             tgt_str.append(sym)
-    #
-    #         translate.append(translate_str)
-    #         tgt.append(tgt_str)
-
     for k, batch in enumerate(test_iter):
-        print("Batch Size Orig: ", batch.src.size())
         src_orig = batch.src.transpose(0, 1)
         trg_orig = batch.trg.transpose(0, 1)
-        print("Batch Size Final: ", src_orig.size())
         for m in range(0, len(src_orig), 1):
             src = src_orig[m:(m + 1)]
             trg = trg_orig[m:(m + 1)]
@@ -310,15 +286,10 @@ def test(args):
             tgt.append(tgt_str)
 
     print("Time for inference: ", time.time() - start_infer_time)
-    print('Length of target array', len(tgt))
-    print('Length of translate array', len(translate))
 
     # Essential for sacrebleu calculations
     translation_sentences = [" ".join(x) for x in translate]
     target_sentences = [" ".join(x) for x in tgt]
-
-    print('Translation sentences', translation_sentences)
-    print('Target sentences', target_sentences)
 
     bleu_validation = evaluate_bleu(translation_sentences, target_sentences)
     print('Test BLEU Score', bleu_validation)
