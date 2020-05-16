@@ -160,13 +160,13 @@ def train(args):
         model.load_state_dict(torch.load(args.load_model))
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
-    # model.cuda()
+    model.cuda()
 
     # Used by original authors, hurts perplexity but improves BLEU score
     criterion = LabelSmoothing(size=len(TGT.vocab), padding_idx=pad_idx, smoothing=0.1)
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
-    # criterion.cuda()
+    criterion.cuda()
 
     train_iter = MyIterator(train, batch_size=args.batch_size, device=0, repeat=False,
                             sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=True)
@@ -233,8 +233,6 @@ def test(args):
     print("Size of source vocabulary:", len(SRC.vocab))
     print("Size of target vocabulary:", len(TGT.vocab))
 
-    pad_idx = TGT.vocab.stoi[BLANK_WORD]
-
     model = make_model(len(SRC.vocab), len(TGT.vocab), n=args.num_blocks, d_model=args.hidden_dim, d_ff=args.ff_dim,
                        h=args.num_heads, dropout=args.dropout)
     print("Model made with n:", args.num_blocks, "hidden_dim:", args.hidden_dim, "feed forward dim:", args.ff_dim,
@@ -262,7 +260,7 @@ def test(args):
         src_orig = batch.src.transpose(0, 1)
         trg_orig = batch.trg.transpose(0, 1)
         for m in range(0, len(src_orig), 1):
-            src = src_orig[m:(m + 1)]
+            src = src_orig[m:(m + 1)].cuda()
             trg = trg_orig[m:(m + 1)]
             src_mask = (src != SRC.vocab.stoi["<blank>"]).unsqueeze(-2)
             out = greedy_decode(model, src, src_mask,
