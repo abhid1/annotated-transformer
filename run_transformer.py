@@ -206,6 +206,10 @@ def train(args):
             model_file = args.save_to + args.exp_name + 'validation.bin'
             print('Saving model without optimizer [%s]' % model_file)
             torch.save(model.state_dict(), model_file)
+        else:
+            model_file = args.save_to + args.exp_name + 'latest.bin'
+            print('Saving model without optimizer [%s]' % model_file)
+            torch.save(model.state_dict(), model_file)
 
 
 def test(args):
