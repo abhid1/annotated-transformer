@@ -242,6 +242,10 @@ def test(args):
     print("Model made with n:", args.num_blocks, "hidden_dim:", args.hidden_dim, "feed forward dim:", args.ff_dim,
           "heads:", args.num_heads, "dropout:", args.dropout)
 
+    model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+    params = sum([np.prod(p.size()) for p in model_parameters])
+    print("Number of parameters: ", params)
+
     if args.load_model:
         print("Loading model from [%s]" % args.load_model)
         model.load_state_dict(torch.load(args.load_model))
