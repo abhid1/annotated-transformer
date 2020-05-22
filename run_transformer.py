@@ -6,8 +6,8 @@ import time
 import torch
 import torch.nn as nn
 import numpy as np
-from torchtext import data, datasets
 
+from torchtext import data, datasets
 from transformer.model import make_model
 from transformer.greedy import greedy_decode
 from transformer.label_smoothing import LabelSmoothing
@@ -16,8 +16,8 @@ from transformer.my_iterator import MyIterator, rebatch
 from transformer.noam_opt import NoamOpt
 from transformer.noam_opt import get_std_opt
 from transformer.arguments import init_config
-
 from transformer.metrics import evaluate_bleu
+from distiller.quantization import PostTrainLinearQuantizer
 
 # GPUs to use
 devices = [0]  # Or use [0, 1] etc for multiple GPUs
@@ -242,13 +242,25 @@ def test(args):
     print("Model made with n:", args.num_blocks, "hidden_dim:", args.hidden_dim, "feed forward dim:", args.ff_dim,
           "heads:", args.num_heads, "dropout:", args.dropout)
 
-    model_parameters = filter(lambda p: p.requires_grad, model.parameters())
-    params = sum([np.prod(p.size()) for p in model_parameters])
-    print("Number of parameters: ", params)
-
     if args.load_model:
         print("Loading model from [%s]" % args.load_model)
         model.load_state_dict(torch.load(args.load_model))
+
+    # UNCOMMENT for POST TRAIN QUANTIZATION
+    quantizer = PostTrainLinearQuantizer(model, mode="SYMMETRIC")
+
+    for t, rf in quantizer.replacement_factory.items():
+        if rf is not None:
+            print("Replacing '{}' modules using '{}' function".format(t.__name__, rf.__name__))
+
+    quantizer.prepare_model()
+    model = quantizer.model
+
+    print(model)
+
+    model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+    params = sum([np.prod(p.size()) for p in model_parameters])
+    print("Number of parameters: ", params)
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
     model.cuda()
