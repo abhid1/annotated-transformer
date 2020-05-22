@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+from copy import deepcopy
 from torchtext import data, datasets
 from transformer.model import make_model
 from transformer.greedy import greedy_decode
@@ -42,6 +43,10 @@ def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_it
     total_loss = 0
     tokens = 0
     for i, batch in enumerate(data_iter):
+        print('src.shape', batch.src.shape)
+        print('tg.shape', batch.trg.shape)
+        print('src_mask.shape', batch.src_mask.shape)
+        print('trg_mask.shape', batch.trg_mask.shape)
         out = model.forward(batch.src, batch.trg, batch.src_mask, batch.trg_mask)
         loss = loss_compute(out, batch.trg_y, batch.ntokens)
         total_loss += loss
@@ -246,16 +251,19 @@ def test(args):
         print("Loading model from [%s]" % args.load_model)
         model.load_state_dict(torch.load(args.load_model))
 
+    model.eval()
+
     # UNCOMMENT for POST TRAIN QUANTIZATION
-    quantizer = PostTrainLinearQuantizer(model, mode="SYMMETRIC")
+    quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="SYMMETRIC")
 
     for t, rf in quantizer.replacement_factory.items():
         if rf is not None:
             print("Replacing '{}' modules using '{}' function".format(t.__name__, rf.__name__))
 
-    dummy_input = (torch.ones(1, 2).to(dtype=torch.long),
-                   torch.ones(1).to(dtype=torch.long),
-                   torch.ones(1, 2).to(dtype=torch.long))
+    dummy_input = (torch.ones(512, 512).to(dtype=torch.long),
+                   torch.ones(512, 512).to(dtype=torch.long),
+                   torch.ones(512, 512).to(dtype=torch.long),
+                   torch.ones(512, 512).to(dtype=torch.long))
 
     quantizer.prepare_model(dummy_input)
     model = quantizer.model
