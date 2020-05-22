@@ -260,10 +260,10 @@ def test(args):
         if rf is not None:
             print("Replacing '{}' modules using '{}' function".format(t.__name__, rf.__name__))
 
-    dummy_input = (torch.ones(512, 512).to(dtype=torch.long),
-                   torch.ones(512, 512).to(dtype=torch.long),
-                   torch.ones(512, 512).to(dtype=torch.long),
-                   torch.ones(512, 512).to(dtype=torch.long))
+    dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
+                   torch.ones(130, 22).to(dtype=torch.long),
+                   torch.ones(130, 1, 10).to(dtype=torch.long),
+                   torch.ones(130, 22, 22).to(dtype=torch.long))
 
     quantizer.prepare_model(dummy_input)
     model = quantizer.model
