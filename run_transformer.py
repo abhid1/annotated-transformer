@@ -253,7 +253,11 @@ def test(args):
         if rf is not None:
             print("Replacing '{}' modules using '{}' function".format(t.__name__, rf.__name__))
 
-    quantizer.prepare_model()
+    dummy_input = (torch.ones(1, 2).to(dtype=torch.long),
+                   torch.ones(1).to(dtype=torch.long),
+                   torch.ones(1, 2).to(dtype=torch.long))
+
+    quantizer.prepare_model(dummy_input)
     model = quantizer.model
 
     print(model)
