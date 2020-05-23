@@ -254,9 +254,9 @@ def test(args):
     model.eval()
 
     # UNCOMMENT for POST TRAIN QUANTIZATION
-    quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="SYMMETRIC")
+    quantized = PostTrainLinearQuantizer(deepcopy(model), mode="SYMMETRIC")
 
-    for t, rf in quantizer.replacement_factory.items():
+    for t, rf in quantized.replacement_factory.items():
         if rf is not None:
             print("Replacing '{}' modules using '{}' function".format(t.__name__, rf.__name__))
 
@@ -265,8 +265,8 @@ def test(args):
                    torch.ones(130, 1, 10).to(dtype=torch.long),
                    torch.ones(130, 22, 22).to(dtype=torch.long))
 
-    quantizer.prepare_model(dummy_input)
-    model = quantizer.model
+    quantized.prepare_model(dummy_input)
+    model = quantized.model
 
     print(model)
 
