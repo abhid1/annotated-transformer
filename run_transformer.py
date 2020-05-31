@@ -301,7 +301,7 @@ def test(args):
                                          (rebatch(pad_idx, b) for b in train_iter),
                                          test_iter,
                                          (rebatch(pad_idx, b) for b in valid_iter),
-                                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt))
+                                         MultiGPULossCompute(model_par.generator, criterion, devices=devices, opt=model_opt))
     w_MEM = compressor_MEM.run()
 
     model_par.eval()
