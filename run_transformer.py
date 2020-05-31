@@ -293,18 +293,16 @@ def test(args):
     model_opt = get_std_opt(model)
     criterion = LabelSmoothing(size=len(TGT.vocab), padding_idx=pad_idx, smoothing=0.1)
 
-    model_par = nn.DataParallel(model, device_ids=devices)
-
     compressor_MEM = condensa.Compressor(lc,
                                          MEM,
-                                         model_par,
+                                         model,
                                          (rebatch(pad_idx, b) for b in train_iter),
                                          test_iter,
                                          (rebatch(pad_idx, b) for b in valid_iter),
-                                         MultiGPULossCompute(model_par.generator, criterion, devices=devices, opt=model_opt))
+                                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt))
     w_MEM = compressor_MEM.run()
 
-    model_par.eval()
+    w_MEM.eval()
 
     translate = []
     tgt = []
