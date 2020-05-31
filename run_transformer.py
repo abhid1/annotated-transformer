@@ -6,6 +6,8 @@ import time
 import torch
 import torch.nn as nn
 import numpy as np
+import condensa
+from condensa.schemes import Compose, Prune, Quantize
 
 from copy import deepcopy
 from torchtext import data, datasets
@@ -165,13 +167,13 @@ def train(args):
         model.load_state_dict(torch.load(args.load_model))
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
-    model.cuda()
+    # model.cuda()
 
     # Used by original authors, hurts perplexity but improves BLEU score
     criterion = LabelSmoothing(size=len(TGT.vocab), padding_idx=pad_idx, smoothing=0.1)
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
-    criterion.cuda()
+    # criterion.cuda()
 
     train_iter = MyIterator(train, batch_size=args.batch_size, device=0, repeat=False,
                             sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=True)
@@ -251,22 +253,21 @@ def test(args):
         print("Loading model from [%s]" % args.load_model)
         model.load_state_dict(torch.load(args.load_model))
 
-    model.eval()
+    MEM = Compose([Prune(0.02), Quantize(condensa.float16)])
+    lc = condensa.opt.LC(steps=35,  # L-C iterations
+                         l_optimizer=condensa.opt.lc.SGD,  # L-step sub-optimizer
+                         l_optimizer_params={'momentum': 0.95},  # L-step sub-optimizer parameters
+                         lr=0.01,  # Initial learning rate
+                         lr_end=1e-4,  # Final learning rate
+                         mb_iterations_per_l=3000,  # Mini-batch iterations per L-step
+                         mb_iterations_first_l=30000,  # Mini-batch iterations for first L-step
+                         mu_init=1e-3,  # Initial value of `mu`
+                         mu_multiplier=1.1,  # Multiplier for `mu`
+                         mu_cap=10000,  # Maximum value of `mu`
+                         debugging_flags={'custom_model_statistics':
+                                              condensa.util.empty_stat_fn})
 
-    # UNCOMMENT for POST TRAIN QUANTIZATION
-    quantized = PostTrainLinearQuantizer(deepcopy(model), mode="SYMMETRIC")
-
-    for t, rf in quantized.replacement_factory.items():
-        if rf is not None:
-            print("Replacing '{}' modules using '{}' function".format(t.__name__, rf.__name__))
-
-    dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
-                   torch.ones(130, 22).to(dtype=torch.long),
-                   torch.ones(130, 1, 10).to(dtype=torch.long),
-                   torch.ones(130, 22, 22).to(dtype=torch.long))
-
-    quantized.prepare_model(dummy_input)
-    model = quantized.model
+    # prune = condensa.schemes.FilterPrune()
 
     print(model)
 
@@ -275,10 +276,32 @@ def test(args):
     print("Number of parameters: ", params)
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
-    model.cuda()
+    # model.cuda()
 
+    # Train and Valid Iterators are needed for condensa!
+    train_iter = MyIterator(train, batch_size=args.batch_size, device=0, repeat=False,
+                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=True)
+    valid_iter = MyIterator(val, batch_size=args.batch_size, device=0, repeat=False,
+                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False,
+                            sort=False)
     test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=False,
                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
+
+    pad_idx = TGT.vocab.stoi[BLANK_WORD]
+
+    # Use standard optimizer -- As used in the paper
+    model_opt = get_std_opt(model)
+    criterion = LabelSmoothing(size=len(TGT.vocab), padding_idx=pad_idx, smoothing=0.1)
+
+
+    compressor_MEM = condensa.Compressor(lc,
+                                         MEM,
+                                         model,
+                                         (rebatch(pad_idx, b) for b in train_iter),
+                                         test_iter,
+                                         (rebatch(pad_idx, b) for b in valid_iter),
+                                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt))
+    w_MEM = compressor_MEM.run()
 
     model_par = nn.DataParallel(model, device_ids=devices)
     model_par.eval()
