@@ -296,7 +296,7 @@ def test(args):
                                          MEM,
                                          model,
                                          (rebatch(pad_idx, b) for b in train_iter),
-                                         test_iter,
+                                         (rebatch(pad_idx, b) for b in test_iter),
                                          (rebatch(pad_idx, b) for b in valid_iter),
                                          MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None))
     w_MEM = compressor_MEM.run()
