@@ -219,6 +219,26 @@ def train(args):
         torch.save(model.state_dict(), model_file)
 
 
+class SimpleLossCompute(object):
+    """
+    A simple loss compute and train function.
+    """
+
+    def __init__(self, generator, criterion, opt=None):
+        self.generator = generator
+        self.criterion = criterion
+        self.opt = opt
+
+    def __call__(self, x, y, norm):
+        x = self.generator(x)
+        loss = self.criterion(x.contiguous().view(-1, x.size(-1)), y.contiguous().view(-1)) / norm
+        if self.opt is not None:
+            loss.backward()
+            self.opt.step()
+            self.opt.optimizer.zero_grad()
+        return loss.data * norm
+
+
 def test(args):
     # TODO: Add testing configurations
     SRC = data.Field(tokenize=tokenize_de, pad_token=BLANK_WORD, lower=args.lower)
@@ -291,16 +311,16 @@ def test(args):
 
     # Use standard optimizer -- As used in the paper
     criterion = LabelSmoothing(size=len(TGT.vocab), padding_idx=pad_idx, smoothing=0.1)
+    model_opt = get_std_opt(model)
 
     compressor_MEM = condensa.Compressor(lc,
                                          MEM,
                                          model,
-                                         (rebatch(pad_idx, b) for b in train_iter),
-                                         (rebatch(pad_idx, b) for b in test_iter),
-                                         (rebatch(pad_idx, b) for b in valid_iter),
+                                         [rebatch(pad_idx, b) for b in train_iter],
+                                         None,
+                                         None,
                                          MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None))
     w_MEM = compressor_MEM.run()
-
     w_MEM.eval()
 
     translate = []
