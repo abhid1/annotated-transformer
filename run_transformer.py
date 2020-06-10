@@ -359,6 +359,10 @@ def test(args):
         bits_activations: null
         bits_weights: null
         bits_bias: 1
+    generator.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: 1
     """
 
     overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
