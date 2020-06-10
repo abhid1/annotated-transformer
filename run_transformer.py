@@ -6,12 +6,14 @@ import time
 import torch
 import torch.nn as nn
 import numpy as np
+import distiller
 import condensa
 from condensa.schemes import Compose, Prune, Quantize
 
 from copy import deepcopy
 from torchtext import data, datasets
 from transformer.model import make_model
+# from transformer.binary_model import make_model
 from transformer.greedy import greedy_decode
 from transformer.label_smoothing import LabelSmoothing
 from transformer.multi_gpu_loss_compute import MultiGPULossCompute
@@ -273,23 +275,20 @@ def test(args):
         print("Loading model from [%s]" % args.load_model)
         model.load_state_dict(torch.load(args.load_model))
 
-    MEM = Compose([Prune(0.02), Quantize(condensa.float16)])
-    lc = condensa.opt.LC(steps=35,  # L-C iterations
-                         l_optimizer=condensa.opt.lc.SGD,  # L-step sub-optimizer
-                         l_optimizer_params={'momentum': 0.95},  # L-step sub-optimizer parameters
-                         lr=0.01,  # Initial learning rate
-                         lr_end=1e-4,  # Final learning rate
-                         mb_iterations_per_l=3000,  # Mini-batch iterations per L-step
-                         mb_iterations_first_l=30000,  # Mini-batch iterations for first L-step
-                         mu_init=1e-3,  # Initial value of `mu`
-                         mu_multiplier=1.1,  # Multiplier for `mu`
-                         mu_cap=10000,  # Maximum value of `mu`
-                         debugging_flags={'custom_model_statistics':
-                                              condensa.util.empty_stat_fn})
-
+    # MEM = Compose([Prune(0.02), Quantize(condensa.float16)])
+    # lc = condensa.opt.LC(steps=35,  # L-C iterations
+    #                      l_optimizer=condensa.opt.lc.SGD,  # L-step sub-optimizer
+    #                      l_optimizer_params={'momentum': 0.95},  # L-step sub-optimizer parameters
+    #                      lr=0.01,  # Initial learning rate
+    #                      lr_end=1e-4,  # Final learning rate
+    #                      mb_iterations_per_l=3000,  # Mini-batch iterations per L-step
+    #                      mb_iterations_first_l=30000,  # Mini-batch iterations for first L-step
+    #                      mu_init=1e-3,  # Initial value of `mu`
+    #                      mu_multiplier=1.1,  # Multiplier for `mu`
+    #                      mu_cap=10000,  # Maximum value of `mu`
+    #                      debugging_flags={'custom_model_statistics':
+    #                                           condensa.util.empty_stat_fn})
     # prune = condensa.schemes.FilterPrune()
-
-    print(model)
 
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     params = sum([np.prod(p.size()) for p in model_parameters])
@@ -313,15 +312,66 @@ def test(args):
     criterion = LabelSmoothing(size=len(TGT.vocab), padding_idx=pad_idx, smoothing=0.1)
     model_opt = get_std_opt(model)
 
-    compressor_MEM = condensa.Compressor(lc,
-                                         MEM,
-                                         model,
-                                         [rebatch(pad_idx, b) for b in train_iter],
-                                         None,
-                                         None,
-                                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None))
-    w_MEM = compressor_MEM.run()
-    w_MEM.eval()
+    # compressor_MEM = condensa.Compressor(lc,
+    #                                      MEM,
+    #                                      model,
+    #                                      [rebatch(pad_idx, b) for b in train_iter],
+    #                                      None,
+    #                                      None,
+    #                                      SimpleLossCompute(model.generator, criterion, None))
+    # w_MEM = compressor_MEM.run()
+    # w_MEM.eval()
+
+    overrides_yaml = """
+    encoder.layers.*.self_attn.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: 1
+    encoder.layers.*.sublayer.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: 1
+    encoder.norm.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: 1
+    decoder.layers.*.self_attn.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: 1
+    decoder.layers.*.src_attn.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: 1
+    decoder.layers.*.sublayer.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: 1
+    decoder.norm.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: 1
+    src_embed.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: 1
+    tgt_embed.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: 1
+    """
+
+    overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
+    quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
+
+    dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
+                   torch.ones(130, 22).to(dtype=torch.long),
+                   torch.ones(130, 1, 10).to(dtype=torch.long),
+                   torch.ones(130, 22, 22).to(dtype=torch.long))
+
+    quantizer.prepare_model(dummy_input)
+
+    print(quantizer.model)
 
     translate = []
     tgt = []

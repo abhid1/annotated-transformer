@@ -3,6 +3,17 @@
 import torch
 
 import torch.nn as nn
+import distiller.modules as modules
+
+
+class Std(nn.Module):
+    def __init__(self, *args, **kwargs):
+        super(Std, self).__init__()
+        self.args = args
+        self.kwargs = kwargs
+
+    def forward(self, x: torch.Tensor):
+        return torch.std(x, *self.args, **self.kwargs)
 
 
 class LayerNorm(nn.Module):
@@ -15,8 +26,12 @@ class LayerNorm(nn.Module):
         self.a_2 = nn.Parameter(torch.ones(features))
         self.b_2 = nn.Parameter(torch.zeros(features))
         self.eps = eps
+        self.Mean = modules.Mean(dim=-1, keepdim=True)
+        self.Std = Std(dim=-1, keepdim=True)
 
     def forward(self, x):
-        mean = x.mean(dim=-1, keepdim=True)
-        std = x.std(dim=-1, keepdim=True)
+        # mean = x.mean(dim=-1, keepdim=True)
+        mean = self.Mean(x)
+        # std = x.std(dim=-1, keepdim=True)
+        std = self.Std(x)
         return self.a_2 * (x - mean) / (std + self.eps) + self.b_2

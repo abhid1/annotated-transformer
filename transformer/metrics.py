@@ -1,5 +1,6 @@
 import sacrebleu
 
+
 def evaluate_bleu(predictions, labels):
     try:
         bleu_sacre = sacrebleu.raw_corpus_bleu(predictions, [labels], .01).score
