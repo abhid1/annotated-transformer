@@ -287,7 +287,9 @@ def test(args):
     print("Num parameters in original fc layer", np.sum(w2_param))
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
-    # model.cuda()
+    model.cuda()
+
+    model.eval()
 
     test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=False,
                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
@@ -356,7 +358,6 @@ def test(args):
     print(quantizer.model)
 
     model = quantizer.model
-    model.eval()
 
     translate = []
     tgt = []
