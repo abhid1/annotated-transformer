@@ -356,6 +356,7 @@ def test(args):
     print(quantizer.model)
 
     model = quantizer.model
+    model.eval()
 
     translate = []
     tgt = []
