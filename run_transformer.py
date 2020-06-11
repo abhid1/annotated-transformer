@@ -275,28 +275,13 @@ def test(args):
         print("Loading model from [%s]" % args.load_model)
         model.load_state_dict(torch.load(args.load_model))
 
-    # MEM = Compose([Prune(0.02), Quantize(condensa.float16)])
-    # lc = condensa.opt.LC(steps=35,  # L-C iterations
-    #                      l_optimizer=condensa.opt.lc.SGD,  # L-step sub-optimizer
-    #                      l_optimizer_params={'momentum': 0.95},  # L-step sub-optimizer parameters
-    #                      lr=0.01,  # Initial learning rate
-    #                      lr_end=1e-4,  # Final learning rate
-    #                      mb_iterations_per_l=3000,  # Mini-batch iterations per L-step
-    #                      mb_iterations_first_l=30000,  # Mini-batch iterations for first L-step
-    #                      mu_init=1e-3,  # Initial value of `mu`
-    #                      mu_multiplier=1.1,  # Multiplier for `mu`
-    #                      mu_cap=10000,  # Maximum value of `mu`
-    #                      debugging_flags={'custom_model_statistics':
-    #                                           condensa.util.empty_stat_fn})
-    # prune = condensa.schemes.FilterPrune()
-
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     params = sum([np.prod(p.size()) for p in model_parameters])
     print("Number of parameters: ", params)
 
     w2_param = []
     for name, param in model.named_parameters():
-        if name.__contains__("decoder.layers.0.src_attn"):
+        if name.__contains__("generator"):
             w2_param.append(np.prod(param.size()))
 
     print("Num parameters in original fc layer", np.sum(w2_param))
@@ -313,9 +298,9 @@ def test(args):
         bits_weights: null
         bits_bias: 1
     encoder.layers.*.feed_forward.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: 1
+        bits_activations: 8
+        bits_weights: 8
+        bits_bias: 8
     encoder.layers.*.sublayer.*:
         bits_activations: null
         bits_weights: null
@@ -329,9 +314,9 @@ def test(args):
         bits_weights: null
         bits_bias: 1
     decoder.layers.*.feed_forward.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: 1
+        bits_activations: 8
+        bits_weights: 8
+        bits_bias: 8
     decoder.layers.*.src_attn.*:
         bits_activations: null
         bits_weights: null
@@ -353,8 +338,8 @@ def test(args):
         bits_weights: null
         bits_bias: 1
     generator.*:
-        bits_activations: 8
-        bits_weights: 8
+        bits_activations: null
+        bits_weights: null
         bits_bias: 1
     """
 
@@ -369,6 +354,8 @@ def test(args):
     quantizer.prepare_model(dummy_input)
 
     print(quantizer.model)
+
+    model = quantizer.model
 
     translate = []
     tgt = []
