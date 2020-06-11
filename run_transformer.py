@@ -296,7 +296,7 @@ def test(args):
 
     w2_param = []
     for name, param in model.named_parameters():
-        if name.__contains__("encoder.layers.0.self_attn.linears"):
+        if name.__contains__("decoder.layers.0.src_attn"):
             w2_param.append(np.prod(param.size()))
 
     print("Num parameters in original fc layer", np.sum(w2_param))
@@ -325,16 +325,16 @@ def test(args):
         bits_weights: null
         bits_bias: 1
     decoder.layers.*.self_attn.*:
-        bits_activations: null
-        bits_weights: null
+        bits_activations: 8
+        bits_weights: 8
         bits_bias: 1
     decoder.layers.*.feed_forward.*:
         bits_activations: null
         bits_weights: null
         bits_bias: 1
     decoder.layers.*.src_attn.*:
-        bits_activations: null
-        bits_weights: null
+        bits_activations: 8
+        bits_weights: 8
         bits_bias: 1
     decoder.layers.*.sublayer.*:
         bits_activations: null
