@@ -12,7 +12,7 @@ class Generator(nn.Module):
     def __init__(self, d_model, vocab):
         super(Generator, self).__init__()
         self.proj = nn.Linear(d_model, vocab)
+        self.log_softmax = nn.LogSoftmax(dim=-1)
 
     def forward(self, x):
-        log_softmax = nn.LogSoftmax(dim=-1)
-        return log_softmax(self.proj(x))
+        return self.log_softmax(self.proj(x))

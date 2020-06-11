@@ -3,7 +3,7 @@
 import torch
 
 import torch.nn as nn
-import distiller.modules as modules
+from distiller.modules import *
 
 
 class Std(nn.Module):
@@ -26,12 +26,17 @@ class LayerNorm(nn.Module):
         self.a_2 = nn.Parameter(torch.ones(features))
         self.b_2 = nn.Parameter(torch.zeros(features))
         self.eps = eps
-        self.Mean = modules.Mean(dim=-1, keepdim=True)
+        self.Mean = Mean(dim=-1, keepdim=True)
         self.Std = Std(dim=-1, keepdim=True)
+        self.eltwisemul1 = EltwiseMult()
+        self.eltwisesub1 = EltwiseSub()
+        self.eltwisediv = EltwiseDiv()
+        self.eltwiseadd = EltwiseAdd()
 
     def forward(self, x):
         # mean = x.mean(dim=-1, keepdim=True)
         mean = self.Mean(x)
         # std = x.std(dim=-1, keepdim=True)
         std = self.Std(x)
-        return self.a_2 * (x - mean) / (std + self.eps) + self.b_2
+        return self.eltwisediv(self.eltwisemul1(self.a_2, (self.eltwisesub1(x - mean))),
+                               self.eltwiseadd((std + self.eps), self.b_2))

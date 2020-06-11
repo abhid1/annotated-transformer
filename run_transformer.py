@@ -294,36 +294,25 @@ def test(args):
     params = sum([np.prod(p.size()) for p in model_parameters])
     print("Number of parameters: ", params)
 
+    w2_param = []
+    for name, param in model.named_parameters():
+        if name.__contains__("encoder.layers.0.self_attn.linears"):
+            w2_param.append(np.prod(param.size()))
+
+    print("Num parameters in original fc layer", np.sum(w2_param))
+
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
     # model.cuda()
 
-    # Train and Valid Iterators are needed for condensa!
-    train_iter = MyIterator(train, batch_size=args.batch_size, device=0, repeat=False,
-                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=True)
-    valid_iter = MyIterator(val, batch_size=args.batch_size, device=0, repeat=False,
-                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False,
-                            sort=False)
     test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=False,
                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
 
-    pad_idx = TGT.vocab.stoi[BLANK_WORD]
-
-    # Use standard optimizer -- As used in the paper
-    criterion = LabelSmoothing(size=len(TGT.vocab), padding_idx=pad_idx, smoothing=0.1)
-    model_opt = get_std_opt(model)
-
-    # compressor_MEM = condensa.Compressor(lc,
-    #                                      MEM,
-    #                                      model,
-    #                                      [rebatch(pad_idx, b) for b in train_iter],
-    #                                      None,
-    #                                      None,
-    #                                      SimpleLossCompute(model.generator, criterion, None))
-    # w_MEM = compressor_MEM.run()
-    # w_MEM.eval()
-
     overrides_yaml = """
     encoder.layers.*.self_attn.*:
+        bits_activations: 8
+        bits_weights: 8
+        bits_bias: 1
+    encoder.layers.*.feed_forward.*:
         bits_activations: null
         bits_weights: null
         bits_bias: 1
@@ -336,6 +325,10 @@ def test(args):
         bits_weights: null
         bits_bias: 1
     decoder.layers.*.self_attn.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: 1
+    decoder.layers.*.feed_forward.*:
         bits_activations: null
         bits_weights: null
         bits_bias: 1
