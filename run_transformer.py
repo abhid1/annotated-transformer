@@ -353,9 +353,9 @@ def test(args):
 
     quantizer.prepare_model(dummy_input)
 
-    print(quantizer.model)
-
     quantizer.model.eval()
+
+    print(quantizer.model)
 
     translate = []
     tgt = []
@@ -366,10 +366,10 @@ def test(args):
         src_orig = batch.src.transpose(0, 1)
         trg_orig = batch.trg.transpose(0, 1)
         for m in range(0, len(src_orig), 1):
-            src = src_orig[m:(m + 1)]
+            src = src_orig[m:(m + 1)].cuda()
             trg = trg_orig[m:(m + 1)]
             src_mask = (src != SRC.vocab.stoi["<blank>"]).unsqueeze(-2)
-            out = greedy_decode(quantizer.model, src, src_mask,
+            out = greedy_decode(model, src, src_mask,
                                 max_len=60, start_symbol=TGT.vocab.stoi["<s>"])
             translate_str = []
             for i in range(0, out.size(0)):
