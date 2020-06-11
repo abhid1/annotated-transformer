@@ -309,8 +309,8 @@ def test(args):
 
     overrides_yaml = """
     encoder.layers.*.self_attn.*:
-        bits_activations: 8
-        bits_weights: 8
+        bits_activations: null
+        bits_weights: null
         bits_bias: 1
     encoder.layers.*.feed_forward.*:
         bits_activations: null
@@ -325,16 +325,16 @@ def test(args):
         bits_weights: null
         bits_bias: 1
     decoder.layers.*.self_attn.*:
-        bits_activations: 8
-        bits_weights: 8
+        bits_activations: null
+        bits_weights: null
         bits_bias: 1
     decoder.layers.*.feed_forward.*:
         bits_activations: null
         bits_weights: null
         bits_bias: 1
     decoder.layers.*.src_attn.*:
-        bits_activations: 8
-        bits_weights: 8
+        bits_activations: null
+        bits_weights: null
         bits_bias: 1
     decoder.layers.*.sublayer.*:
         bits_activations: null
@@ -353,8 +353,8 @@ def test(args):
         bits_weights: null
         bits_bias: 1
     generator.*:
-        bits_activations: null
-        bits_weights: null
+        bits_activations: 8
+        bits_weights: 8
         bits_bias: 1
     """
 
