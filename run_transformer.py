@@ -353,7 +353,6 @@ def test(args):
                    torch.ones(130, 22, 22).to(dtype=torch.long))
 
     quantizer.prepare_model(dummy_input)
-    q_model = quantizer.model
     model = quantizer.model
     model.eval()
 
