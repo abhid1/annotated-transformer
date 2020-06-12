@@ -208,6 +208,7 @@ def train(args):
                          MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args, SRC, TGT,
                          valid_iter, is_valid=True)
         print('Validation loss:', loss)
+        print('Validation perplexity: ', np.exp(loss))
         bleu_score = run_validation_bleu_score(model, SRC, TGT, valid_iter)
 
         if best_bleu < bleu_score:
@@ -281,7 +282,7 @@ def test(args):
 
     w2_param = []
     for name, param in model.named_parameters():
-        if name.__contains__("generator"):
+        if name.__contains__("src_embed") or name.__contains__("tgt_embed"):
             w2_param.append(np.prod(param.size()))
 
     print("Num parameters in original fc layer", np.sum(w2_param))
@@ -353,7 +354,8 @@ def test(args):
 
     quantizer.prepare_model(dummy_input)
 
-    quantizer.model.eval()
+    model = quantizer.model
+    model.eval()
 
     print(quantizer.model)
 
@@ -369,7 +371,7 @@ def test(args):
             src = src_orig[m:(m + 1)]
             trg = trg_orig[m:(m + 1)]
             src_mask = (src != SRC.vocab.stoi["<blank>"]).unsqueeze(-2)
-            out = greedy_decode(quantizer.model, src, src_mask,
+            out = greedy_decode(model, src, src_mask,
                                 max_len=60, start_symbol=TGT.vocab.stoi["<s>"])
             translate_str = []
             for i in range(0, out.size(0)):
@@ -397,6 +399,11 @@ def test(args):
 
     bleu_validation = evaluate_bleu(translation_sentences, target_sentences)
     print('Test BLEU Score', bleu_validation)
+
+    # Save quantized model!
+    model_file = args.save_to + args.exp_name + '.bin'
+    print('Saving latest model without optimizer [%s]' % model_file)
+    torch.save(model.state_dict(), model_file)
 
 
 if __name__ == '__main__':
