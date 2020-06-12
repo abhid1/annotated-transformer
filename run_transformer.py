@@ -297,51 +297,51 @@ def test(args):
     encoder.layers.*.self_attn.*:
         bits_activations: null
         bits_weights: null
-        bits_bias: 1
+        bits_bias: null
     encoder.layers.*.feed_forward.*:
-        bits_activations: 8
-        bits_weights: 8
-        bits_bias: 8
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
     encoder.layers.*.sublayer.*:
         bits_activations: null
         bits_weights: null
-        bits_bias: 1
+        bits_bias: null
     encoder.norm.*:
         bits_activations: null
         bits_weights: null
-        bits_bias: 1
+        bits_bias: null
     decoder.layers.*.self_attn.*:
         bits_activations: null
         bits_weights: null
-        bits_bias: 1
+        bits_bias: null
     decoder.layers.*.feed_forward.*:
-        bits_activations: 8
-        bits_weights: 8
-        bits_bias: 8
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
     decoder.layers.*.src_attn.*:
         bits_activations: null
         bits_weights: null
-        bits_bias: 1
+        bits_bias: null
     decoder.layers.*.sublayer.*:
         bits_activations: null
         bits_weights: null
-        bits_bias: 1
+        bits_bias: null
     decoder.norm.*:
         bits_activations: null
         bits_weights: null
-        bits_bias: 1
+        bits_bias: null
     src_embed.*:
         bits_activations: null
         bits_weights: null
-        bits_bias: 1
+        bits_bias: null
     tgt_embed.*:
         bits_activations: null
         bits_weights: null
-        bits_bias: 1
+        bits_bias: null
     generator.*:
         bits_activations: null
         bits_weights: null
-        bits_bias: 1
+        bits_bias: null
     """
 
     overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
