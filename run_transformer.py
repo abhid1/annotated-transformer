@@ -299,9 +299,9 @@ def test(args):
         bits_weights: null
         bits_bias: null
     encoder.layers.*.feed_forward.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
+        bits_activations: 16
+        bits_weights: 16
+        bits_bias: 16
     encoder.layers.*.sublayer.*:
         bits_activations: null
         bits_weights: null
@@ -315,9 +315,9 @@ def test(args):
         bits_weights: null
         bits_bias: null
     decoder.layers.*.feed_forward.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
+        bits_activations: 16
+        bits_weights: 16
+        bits_bias: 16
     decoder.layers.*.src_attn.*:
         bits_activations: null
         bits_weights: null
@@ -353,11 +353,11 @@ def test(args):
                    torch.ones(130, 22, 22).to(dtype=torch.long))
 
     quantizer.prepare_model(dummy_input)
-
+    q_model = quantizer.model
     model = quantizer.model
     model.eval()
 
-    print(quantizer.model)
+    print(model)
 
     translate = []
     tgt = []
