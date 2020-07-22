@@ -47,10 +47,6 @@ def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_it
     total_loss = 0
     tokens = 0
     for i, batch in enumerate(data_iter):
-        print('src.shape', batch.src.shape)
-        print('tg.shape', batch.trg.shape)
-        print('src_mask.shape', batch.src_mask.shape)
-        print('trg_mask.shape', batch.trg_mask.shape)
         out = model.forward(batch.src, batch.trg, batch.src_mask, batch.trg_mask)
         loss = loss_compute(out, batch.trg_y, batch.ntokens)
         total_loss += loss
@@ -282,13 +278,14 @@ def test(args):
 
     w2_param = []
     for name, param in model.named_parameters():
-        if name.__contains__("src_embed") or name.__contains__("tgt_embed"):
+        if name.__contains__("src_embed") or name.__contains__("tgt_embed") or name.__contains__("feed_forward")\
+                or name.__contains__("generator"):
             w2_param.append(np.prod(param.size()))
 
     print("Num parameters in original fc layer", np.sum(w2_param))
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
-    # model.cuda()
+    model.cuda()
 
     test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=False,
                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
@@ -299,9 +296,9 @@ def test(args):
         bits_weights: null
         bits_bias: null
     encoder.layers.*.feed_forward.*:
-        bits_activations: 16
-        bits_weights: 16
-        bits_bias: 16
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
     encoder.layers.*.sublayer.*:
         bits_activations: null
         bits_weights: null
@@ -315,9 +312,9 @@ def test(args):
         bits_weights: null
         bits_bias: null
     decoder.layers.*.feed_forward.*:
-        bits_activations: 16
-        bits_weights: 16
-        bits_bias: 16
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
     decoder.layers.*.src_attn.*:
         bits_activations: null
         bits_weights: null
