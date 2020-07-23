@@ -278,8 +278,7 @@ def test(args):
 
     w2_param = []
     for name, param in model.named_parameters():
-        if name.__contains__("src_embed") or name.__contains__("tgt_embed") or name.__contains__("feed_forward")\
-                or name.__contains__("generator"):
+        if name.__contains__("feed_forward"):
             w2_param.append(np.prod(param.size()))
 
     print("Num parameters in original fc layer", np.sum(w2_param))

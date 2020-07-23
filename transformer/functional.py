@@ -26,7 +26,7 @@ def subsequent_mask(size):
     return torch.from_numpy(mask) == 0
 
 
-def attention(query, key, value, mask=None, dropout=None, matmul=None, softmax=None):
+def attention(query, key, value, mask=None, dropout=None, matmul=None):
     """
     Compute 'Scaled Dot Product Attention'
     """
@@ -34,6 +34,7 @@ def attention(query, key, value, mask=None, dropout=None, matmul=None, softmax=N
     scores = matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
     if mask is not None:
         scores = scores.masked_fill_(mask == 0, value=-1e9)
+    softmax = nn.Softmax(dim=-1)
     p_attn = softmax(scores)
     if dropout is not None:
         p_attn = dropout(p_attn)

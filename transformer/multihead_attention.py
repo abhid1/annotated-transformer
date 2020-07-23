@@ -21,7 +21,6 @@ class MultiHeadAttention(nn.Module):
         self.attn = None
         self.matmul = Matmul()
         self.dropout = nn.Dropout(p=dropout)
-        self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, query, key, value, mask=None):
         """
@@ -35,7 +34,7 @@ class MultiHeadAttention(nn.Module):
         query, key, value = [l(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2) for l, x in
                              zip(self.linears, (query, key, value))]
         # 2) Apply attention on all the projected vectors in batch.
-        x, self.attn = attention(query, key, value, mask=mask, dropout=self.dropout, matmul=self.matmul, softmax=self.softmax)
+        x, self.attn = attention(query, key, value, mask=mask, dropout=self.dropout, matmul=self.matmul)
         # 3) "Concat" using a view and apply a final linear.
         x = x.transpose(1, 2).contiguous().view(nbatches, -1, self.h * self.d_k)
         return self.linears[-1](x)
