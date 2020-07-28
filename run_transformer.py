@@ -198,7 +198,7 @@ def train(args):
 
     # PRUNING CODE
     if args.summary:
-        distiller.model_summary(model, None, args.summary, 'wikitext2')
+        distiller.model_summary(model, args.summary, None, 'logs')
         exit(0)
 
     msglogger = apputils.config_pylogger('logging.conf', None)
@@ -207,57 +207,6 @@ def train(args):
     pylogger = PythonLogger(msglogger)
 
     source = args.compress
-
-    # overrides_yaml = """
-    # encoder.layers.*.self_attn.*:
-    #     bits_activations: null
-    #     bits_weights: null
-    #     bits_bias: null
-    # encoder.layers.*.feed_forward.*:
-    #     bits_activations: null
-    #     bits_weights: null
-    #     bits_bias: null
-    # encoder.layers.*.sublayer.*:
-    #     bits_activations: null
-    #     bits_weights: null
-    #     bits_bias: null
-    # encoder.norm.*:
-    #     bits_activations: null
-    #     bits_weights: null
-    #     bits_bias: null
-    # decoder.layers.*.self_attn.*:
-    #     bits_activations: null
-    #     bits_weights: null
-    #     bits_bias: null
-    # decoder.layers.*.feed_forward.*:
-    #     bits_activations: null
-    #     bits_weights: null
-    #     bits_bias: null
-    # decoder.layers.*.src_attn.*:
-    #     bits_activations: null
-    #     bits_weights: null
-    #     bits_bias: null
-    # decoder.layers.*.sublayer.*:
-    #     bits_activations: null
-    #     bits_weights: null
-    #     bits_bias: null
-    # decoder.norm.*:
-    #     bits_activations: null
-    #     bits_weights: null
-    #     bits_bias: null
-    # src_embed.*:
-    #     bits_activations: null
-    #     bits_weights: null
-    #     bits_bias: null
-    # tgt_embed.*:
-    #     bits_activations: null
-    #     bits_weights: null
-    #     bits_bias: null
-    # generator.*:
-    #     bits_activations: null
-    #     bits_weights: null
-    #     bits_bias: null
-    # """
 
     compression_scheduler = distiller.config.file_config(model, None, args.compress)
 
