@@ -19,7 +19,7 @@ class MultiGPULossCompute(object):
         self.devices = devices
         self.chunk_size = chunk_size
 
-    def __call__(self, out, target, normalize):
+    def __call__(self, out, target, normalize, i, epoch, steps_per_epoch, compression_scheduler=None):
         total = 0.0
         generator = nn.parallel.replicate(self.generator, devices=self.devices)
         out_scatter = nn.parallel.scatter(out, target_gpus=self.devices)
@@ -56,6 +56,10 @@ class MultiGPULossCompute(object):
 
         # Backprop all loss through transformer.
         if self.opt is not None:
+            if compression_scheduler:
+                compression_scheduler.before_backward_pass(epoch, minibatch_id=i,
+                                                           minibatches_per_epoch=steps_per_epoch,
+                                                           loss=total*normalize, return_loss_components=False)
             out_grad = [Variable(torch.cat(og, dim=1)) for og in out_grad]
             o1 = out
             o2 = nn.parallel.gather(out_grad, target_device=self.devices[0])

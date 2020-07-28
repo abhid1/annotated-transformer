@@ -7,6 +7,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 import distiller
+import distiller.apputils as apputils
+import math
 import condensa
 from condensa.schemes import Compose, Prune, Quantize
 
@@ -23,6 +25,7 @@ from transformer.noam_opt import get_std_opt
 from transformer.arguments import init_config
 from transformer.metrics import evaluate_bleu
 from distiller.quantization import PostTrainLinearQuantizer
+from distiller.data_loggers import TensorBoardLogger, PythonLogger
 
 # GPUs to use
 devices = [0]  # Or use [0, 1] etc for multiple GPUs
@@ -38,7 +41,7 @@ spacy_de = spacy.load('de')
 spacy_en = spacy.load('en')
 
 
-def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_iter=None, is_valid=False):
+def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, compression_scheduler=None, SRC=None, TGT=None, valid_iter=None, is_valid=False):
     """
     Standard Training and Logging Function
     """
@@ -47,8 +50,10 @@ def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_it
     total_loss = 0
     tokens = 0
     for i, batch in enumerate(data_iter):
+        if compression_scheduler:
+            compression_scheduler.on_minibatch_begin(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
         out = model.forward(batch.src, batch.trg, batch.src_mask, batch.trg_mask)
-        loss = loss_compute(out, batch.trg_y, batch.ntokens)
+        loss = loss_compute(out, batch.trg_y, batch.ntokens, i, epoch, steps_per_epoch, compression_scheduler)
         total_loss += loss
         total_tokens += batch.ntokens
         tokens += batch.ntokens
@@ -65,6 +70,9 @@ def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_it
 
         if is_valid:
             run_validation_bleu_score(model.module, SRC, TGT, valid_iter)
+
+        if compression_scheduler:
+            compression_scheduler.on_minibatch_end(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
 
     return total_loss / total_tokens
 
@@ -180,13 +188,79 @@ def train(args):
                             sort=False)
     model_par = nn.DataParallel(model, device_ids=devices)
 
-    #model_opt = NoamOpt(model.src_embed[0].d_model, 1, 2000,
-    #                    torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
+    # model_opt = NoamOpt(model.src_embed[0].d_model, 1, 2000,
+    #                     torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
 
     # Use standard optimizer -- As used in the paper
     model_opt = get_std_opt(model)
 
+    # PRUNING CODE
+    if args.summary:
+        distiller.model_summary(model, None, args.summary, 'wikitext2')
+        exit(0)
+
+    msglogger = apputils.config_pylogger('logging.conf', None)
+    tflogger = TensorBoardLogger(msglogger.logdir)
+    tflogger.log_gradients = True
+    pylogger = PythonLogger(msglogger)
+
+    source = args.compress
+
+    # overrides_yaml = """
+    # encoder.layers.*.self_attn.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # encoder.layers.*.feed_forward.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # encoder.layers.*.sublayer.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # encoder.norm.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.layers.*.self_attn.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.layers.*.feed_forward.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.layers.*.src_attn.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.layers.*.sublayer.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.norm.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # src_embed.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # tgt_embed.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # generator.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # """
+
+    compression_scheduler = distiller.config.file_config(model, None, args.compress)
+
     best_bleu = 0
+    steps_per_epoch = math.ceil(len(train_iter.data()) / 60)
 
     for epoch in range(args.epoch):
         print("=" * 80)
@@ -194,15 +268,23 @@ def train(args):
         print("=" * 80)
         print("Training...")
         model_par.train()
+
+        if compression_scheduler:
+            compression_scheduler.on_epoch_begin(epoch)
+
         run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
-                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args, SRC, TGT,
-                  valid_iter, is_valid=False)
+                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args, epoch,
+                  steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=False)
 
         print("Validation...")
         model_par.eval()
         loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
-                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args, SRC, TGT,
-                         valid_iter, is_valid=True)
+                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args, epoch,
+                         steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=True)
+
+        if compression_scheduler:
+            compression_scheduler.on_epoch_end(epoch)
+
         print('Validation loss:', loss)
         print('Validation perplexity: ', np.exp(loss))
         bleu_score = run_validation_bleu_score(model, SRC, TGT, valid_iter)
@@ -284,74 +366,75 @@ def test(args):
     print("Num parameters in original fc layer", np.sum(w2_param))
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
-    model.cuda()
+    # model.cuda()
 
     test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=False,
                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
 
-    overrides_yaml = """
-    encoder.layers.*.self_attn.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    encoder.layers.*.feed_forward.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    encoder.layers.*.sublayer.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    encoder.norm.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    decoder.layers.*.self_attn.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    decoder.layers.*.feed_forward.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    decoder.layers.*.src_attn.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    decoder.layers.*.sublayer.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    decoder.norm.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    src_embed.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    tgt_embed.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    generator.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    """
+    ## Post-Linear Quantization Code
+    # overrides_yaml = """
+    # encoder.layers.*.self_attn.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # encoder.layers.*.feed_forward.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # encoder.layers.*.sublayer.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # encoder.norm.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.layers.*.self_attn.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.layers.*.feed_forward.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.layers.*.src_attn.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.layers.*.sublayer.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.norm.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # src_embed.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # tgt_embed.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # generator.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # """
+    #
+    # overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
+    # quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
 
-    overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
-    quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
+    # Post-Linear Quantization block
+    # dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
+    #                torch.ones(130, 22).to(dtype=torch.long),
+    #                torch.ones(130, 1, 10).to(dtype=torch.long),
+    #                torch.ones(130, 22, 22).to(dtype=torch.long))
+    # quantizer.prepare_model(dummy_input)
+    # model = quantizer.model
 
-    dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
-                   torch.ones(130, 22).to(dtype=torch.long),
-                   torch.ones(130, 1, 10).to(dtype=torch.long),
-                   torch.ones(130, 22, 22).to(dtype=torch.long))
-
-    quantizer.prepare_model(dummy_input)
-    model = quantizer.model
     model.eval()
-
     print(model)
 
     translate = []

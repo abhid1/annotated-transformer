@@ -34,6 +34,14 @@ def init_config():
                         help='set the dropout for the model')
     parser.add_argument('--valid_every', default=150, type=int, help='how often validate bleu in epoch')
 
+    # Distiller-related arguments
+    SUMMARY_CHOICES = ['sparsity', 'model', 'modules', 'png', 'percentile']
+    parser.add_argument('--summary', type=str, choices=SUMMARY_CHOICES,
+                        help='print a summary of the model, and exit - options: ' +
+                             ' | '.join(SUMMARY_CHOICES))
+    parser.add_argument('--compress', dest='compress', type=str, nargs='?', action='store',
+                        help='configuration file for pruning the model (default is to use hard-coded schedule)')
+
     args = parser.parse_args()
 
     return args
