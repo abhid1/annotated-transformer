@@ -172,6 +172,8 @@ def train(args):
         print("Loading model from [%s]" % args.load_model)
         model.load_state_dict(torch.load(args.load_model))
 
+    print(model)
+
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
     # model.cuda()
 
