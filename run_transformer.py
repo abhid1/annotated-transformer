@@ -198,7 +198,8 @@ def train(args):
 
     # PRUNING CODE
     if args.summary:
-        distiller.model_summary(model, args.summary, None, 'logs')
+        df = distiller.weights_sparsity_tbl_summary(model, False)
+        print(df)
         exit(0)
 
     msglogger = apputils.config_pylogger('logging.conf', None)
@@ -317,7 +318,7 @@ def test(args):
     print("Num parameters in original fc layer", np.sum(w2_param))
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
-    # model.cuda()
+    model.cuda()
 
     test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=False,
                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
@@ -430,9 +431,9 @@ def test(args):
     print('Test BLEU Score', bleu_validation)
 
     # Save quantized model!
-    model_file = args.save_to + args.exp_name + '.bin'
-    print('Saving latest model without optimizer [%s]' % model_file)
-    torch.save(model.state_dict(), model_file)
+    # model_file = args.save_to + args.exp_name + '.bin'
+    # print('Saving latest model without optimizer [%s]' % model_file)
+    # torch.save(model.state_dict(), model_file)
 
 
 if __name__ == '__main__':
