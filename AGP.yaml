@@ -66,8 +66,7 @@ pruners:
               decoder.layers.4.src_attn.linears.0.weight, decoder.layers.4.src_attn.linears.1.weight,
               decoder.layers.4.src_attn.linears.2.weight, decoder.layers.4.src_attn.linears.3.weight,
               decoder.layers.5.src_attn.linears.0.weight, decoder.layers.5.src_attn.linears.1.weight,
-              decoder.layers.5.src_attn.linears.2.weight, decoder.layers.5.src_attn.linears.3.weight,
-              src_embed.0.lut.weight, tgt_embed.0.lut.weight, generator.proj.weight]
+              decoder.layers.5.src_attn.linears.2.weight, decoder.layers.5.src_attn.linears.3.weight]
 policies:
   - pruner:
       instance_name: feed_forward_pruner
