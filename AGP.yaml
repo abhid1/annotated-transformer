@@ -23,7 +23,7 @@ pruners:
     class: AutomatedGradualPruner
     initial_sparsity : 0.05
     final_sparsity: 0.70
-    weights: [src_embed.0.lut.weight, tgt_embed.0.lut.weight]
+    weights: [generator.proj.weight]
 policies:
   - pruner:
       instance_name: feed_forward_pruner
