@@ -315,7 +315,7 @@ def train(args):
         #                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args, epoch,
         #                  steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=True)
 
-        loss = run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
+        loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
                          MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args,
                          SRC, TGT, valid_iter, is_valid=True)
 
