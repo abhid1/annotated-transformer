@@ -257,7 +257,8 @@ def train(args):
 
     overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
     quantizer = QuantAwareTrainRangeLinearQuantizer(deepcopy(model), optimizer=model_opt.optimizer,
-                                                    mode="ASYMMETRIC_UNSIGNED", overrides=overrides, qu)
+                                                    mode="ASYMMETRIC_UNSIGNED", overrides=overrides,
+                                                    quantize_inputs=False)
     dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
                    torch.ones(130, 22).to(dtype=torch.long),
                    torch.ones(130, 1, 10).to(dtype=torch.long),
