@@ -23,42 +23,7 @@ pruners:
     class: AutomatedGradualPruner
     initial_sparsity : 0.05
     final_sparsity: 0.70
-    weights: [encoder.layers.0.self_attn.linears.0.weight, encoder.layers.0.self_attn.linears.1.weight,
-    encoder.layers.0.self_attn.linears.2.weight, encoder.layers.0.self_attn.linears.3.weight,
-    encoder.layers.1.self_attn.linears.0.weight, encoder.layers.1.self_attn.linears.1.weight,
-    encoder.layers.1.self_attn.linears.2.weight, encoder.layers.1.self_attn.linears.3.weight,
-    encoder.layers.2.self_attn.linears.0.weight, encoder.layers.2.self_attn.linears.1.weight,
-    encoder.layers.2.self_attn.linears.2.weight, encoder.layers.2.self_attn.linears.3.weight,
-    encoder.layers.3.self_attn.linears.0.weight, encoder.layers.3.self_attn.linears.1.weight,
-    encoder.layers.3.self_attn.linears.2.weight, encoder.layers.3.self_attn.linears.3.weight,
-    encoder.layers.4.self_attn.linears.0.weight, encoder.layers.4.self_attn.linears.1.weight,
-    encoder.layers.4.self_attn.linears.2.weight, encoder.layers.4.self_attn.linears.3.weight,
-    encoder.layers.5.self_attn.linears.0.weight, encoder.layers.5.self_attn.linears.1.weight,
-    encoder.layers.5.self_attn.linears.2.weight, encoder.layers.5.self_attn.linears.3.weight,
-    decoder.layers.0.self_attn.linears.0.weight, decoder.layers.0.self_attn.linears.1.weight,
-    decoder.layers.0.self_attn.linears.2.weight, decoder.layers.0.self_attn.linears.3.weight,
-    decoder.layers.1.self_attn.linears.0.weight, decoder.layers.1.self_attn.linears.1.weight,
-    decoder.layers.1.self_attn.linears.2.weight, decoder.layers.1.self_attn.linears.3.weight,
-    decoder.layers.2.self_attn.linears.0.weight, decoder.layers.2.self_attn.linears.1.weight,
-    decoder.layers.2.self_attn.linears.2.weight, decoder.layers.2.self_attn.linears.3.weight,
-    decoder.layers.3.self_attn.linears.0.weight, decoder.layers.3.self_attn.linears.1.weight,
-    decoder.layers.3.self_attn.linears.2.weight, decoder.layers.3.self_attn.linears.3.weight,
-    decoder.layers.4.self_attn.linears.0.weight, decoder.layers.4.self_attn.linears.1.weight,
-    decoder.layers.4.self_attn.linears.2.weight, decoder.layers.4.self_attn.linears.3.weight,
-    decoder.layers.5.self_attn.linears.0.weight, decoder.layers.5.self_attn.linears.1.weight,
-    decoder.layers.5.self_attn.linears.2.weight, decoder.layers.5.self_attn.linears.3.weight,
-    decoder.layers.0.src_attn.linears.0.weight, decoder.layers.0.src_attn.linears.1.weight,
-    decoder.layers.0.src_attn.linears.2.weight, decoder.layers.0.src_attn.linears.3.weight,
-    decoder.layers.1.src_attn.linears.0.weight, decoder.layers.1.src_attn.linears.1.weight,
-    decoder.layers.1.src_attn.linears.2.weight, decoder.layers.1.src_attn.linears.3.weight,
-    decoder.layers.2.src_attn.linears.0.weight, decoder.layers.2.src_attn.linears.1.weight,
-    decoder.layers.2.src_attn.linears.2.weight, decoder.layers.2.src_attn.linears.3.weight,
-    decoder.layers.3.src_attn.linears.0.weight, decoder.layers.3.src_attn.linears.1.weight,
-    decoder.layers.3.src_attn.linears.2.weight, decoder.layers.3.src_attn.linears.3.weight,
-    decoder.layers.4.src_attn.linears.0.weight, decoder.layers.4.src_attn.linears.1.weight,
-    decoder.layers.4.src_attn.linears.2.weight, decoder.layers.4.src_attn.linears.3.weight,
-    decoder.layers.5.src_attn.linears.0.weight, decoder.layers.5.src_attn.linears.1.weight,
-    decoder.layers.5.src_attn.linears.2.weight, decoder.layers.5.src_attn.linears.3.weight]
+    weights: [src_embed.0.lut.weight, tgt_embed.0.lut.weight]
 policies:
   - pruner:
       instance_name: feed_forward_pruner
