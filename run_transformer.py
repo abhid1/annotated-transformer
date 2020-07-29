@@ -43,7 +43,7 @@ spacy_en = spacy.load('en')
 
 
 # def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, compression_scheduler=None, SRC=None, TGT=None, valid_iter=None, is_valid=False):
-def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, SRC=None, TGT=None, valid_iter=None, is_valid=False):
+def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_iter=None, is_valid=False):
     """
     Standard Training and Logging Function
     """
@@ -59,7 +59,7 @@ def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, SRC=
 
         # IF PRUNING
         # loss = loss_compute(out, batch.trg_y, batch.ntokens, i, epoch, steps_per_epoch, compression_scheduler)
-        loss = loss_compute(out, batch.trg_y, batch.ntokens, i, epoch, steps_per_epoch)
+        loss = loss_compute(out, batch.trg_y, batch.ntokens)
 
         total_loss += loss
         total_tokens += batch.ntokens
@@ -284,7 +284,9 @@ def train(args):
     # compression_scheduler = distiller.config.file_config(model, None, args.compress)
 
     best_bleu = 0
-    steps_per_epoch = math.ceil(len(train_iter.data()) / 60)
+
+    # FOR PRUNING
+    # steps_per_epoch = math.ceil(len(train_iter.data()) / 60)
 
     for epoch in range(args.epoch):
         print("=" * 80)
@@ -302,8 +304,8 @@ def train(args):
         #           steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=False)
 
         run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
-                             MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args, epoch,
-                             steps_per_epoch, SRC, TGT, valid_iter, is_valid=False)
+                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args,
+                  SRC, TGT, valid_iter, is_valid=False)
 
         print("Validation...")
         model_par.eval()
@@ -314,8 +316,8 @@ def train(args):
         #                  steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=True)
 
         loss = run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
-                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args, epoch,
-                  steps_per_epoch, SRC, TGT, valid_iter, is_valid=True)
+                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args,
+                         SRC, TGT, valid_iter, is_valid=True)
 
         # if compression_scheduler:
         #     compression_scheduler.on_epoch_end(epoch)

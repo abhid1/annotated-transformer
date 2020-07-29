@@ -20,7 +20,7 @@ class MultiGPULossCompute(object):
         self.chunk_size = chunk_size
 
     # def __call__(self, out, target, normalize, i, epoch, steps_per_epoch, compression_scheduler=None):
-    def __call__(self, out, target, normalize, i, epoch, steps_per_epoch):
+    def __call__(self, out, target, normalize):
         total = 0.0
         generator = nn.parallel.replicate(self.generator, devices=self.devices)
         out_scatter = nn.parallel.scatter(out, target_gpus=self.devices)
