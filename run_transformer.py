@@ -25,6 +25,7 @@ from transformer.noam_opt import get_std_opt
 from transformer.arguments import init_config
 from transformer.metrics import evaluate_bleu
 from distiller.quantization import PostTrainLinearQuantizer
+from distiller.quantization import QuantAwareTrainRangeLinearQuantizer
 from distiller.data_loggers import TensorBoardLogger, PythonLogger
 
 # GPUs to use
@@ -41,7 +42,8 @@ spacy_de = spacy.load('de')
 spacy_en = spacy.load('en')
 
 
-def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, compression_scheduler=None, SRC=None, TGT=None, valid_iter=None, is_valid=False):
+# def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, compression_scheduler=None, SRC=None, TGT=None, valid_iter=None, is_valid=False):
+def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, SRC=None, TGT=None, valid_iter=None, is_valid=False):
     """
     Standard Training and Logging Function
     """
@@ -50,8 +52,9 @@ def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, comp
     total_loss = 0
     tokens = 0
     for i, batch in enumerate(data_iter):
-        if compression_scheduler:
-            compression_scheduler.on_minibatch_begin(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
+        # IF PRUNING
+        # if compression_scheduler:
+        #     compression_scheduler.on_minibatch_begin(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
         out = model.forward(batch.src, batch.trg, batch.src_mask, batch.trg_mask)
         loss = loss_compute(out, batch.trg_y, batch.ntokens, i, epoch, steps_per_epoch, compression_scheduler)
         total_loss += loss
@@ -71,8 +74,9 @@ def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, comp
         if is_valid:
             run_validation_bleu_score(model.module, SRC, TGT, valid_iter)
 
-        if compression_scheduler:
-            compression_scheduler.on_minibatch_end(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
+        # IF PRUNING
+        # if compression_scheduler:
+        #     compression_scheduler.on_minibatch_end(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
 
     return total_loss / total_tokens
 
@@ -172,8 +176,6 @@ def train(args):
         print("Loading model from [%s]" % args.load_model)
         model.load_state_dict(torch.load(args.load_model))
 
-    print(model)
-
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
     # model.cuda()
 
@@ -196,20 +198,85 @@ def train(args):
     # Use standard optimizer -- As used in the paper
     model_opt = get_std_opt(model)
 
+
+    # QUANTIZE-AWARE TRAINING CODE
+    overrides_yaml = """
+    encoder.layers.*.self_attn.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
+    encoder.layers.*.feed_forward.*:
+        bits_activations: 16
+        bits_weights: 16
+        bits_bias: 16
+    encoder.layers.*.sublayer.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
+    encoder.norm.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
+    decoder.layers.*.self_attn.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
+    decoder.layers.*.feed_forward.*:
+        bits_activations: 16
+        bits_weights: 16
+        bits_bias: 16
+    decoder.layers.*.src_attn.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
+    decoder.layers.*.sublayer.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
+    decoder.norm.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
+    src_embed.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
+    tgt_embed.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
+    generator.*:
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
+    """
+
+    overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
+    quantizer = QuantAwareTrainRangeLinearQuantizer(deepcopy(model), optimizer=model_opt.optimizer,
+                                                    mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
+    dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
+                   torch.ones(130, 22).to(dtype=torch.long),
+                   torch.ones(130, 1, 10).to(dtype=torch.long),
+                   torch.ones(130, 22, 22).to(dtype=torch.long))
+    quantizer.prepare_model(dummy_input)
+    model = quantizer.model
+    print(model)
+
+
     # PRUNING CODE
-    if args.summary:
-        df = distiller.weights_sparsity_tbl_summary(model, False)
-        print(df)
-        exit(0)
+    # if args.summary:
+    #     df = distiller.weights_sparsity_tbl_summary(model, False)
+    #     print(df)
+    #     exit(0)
 
-    msglogger = apputils.config_pylogger('logging.conf', None)
-    tflogger = TensorBoardLogger(msglogger.logdir)
-    tflogger.log_gradients = True
-    pylogger = PythonLogger(msglogger)
-
-    source = args.compress
-
-    compression_scheduler = distiller.config.file_config(model, None, args.compress)
+    # msglogger = apputils.config_pylogger('logging.conf', None)
+    # tflogger = TensorBoardLogger(msglogger.logdir)
+    # tflogger.log_gradients = True
+    # pylogger = PythonLogger(msglogger)
+    #
+    # source = args.compress
+    #
+    # compression_scheduler = distiller.config.file_config(model, None, args.compress)
 
     best_bleu = 0
     steps_per_epoch = math.ceil(len(train_iter.data()) / 60)
@@ -221,21 +288,32 @@ def train(args):
         print("Training...")
         model_par.train()
 
-        if compression_scheduler:
-            compression_scheduler.on_epoch_begin(epoch)
+        # if compression_scheduler:
+        #     compression_scheduler.on_epoch_begin(epoch)
+
+        # IF PRUNING
+        # run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
+        #           MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args, epoch,
+        #           steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=False)
 
         run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
-                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args, epoch,
-                  steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=False)
+                             MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args, epoch,
+                             steps_per_epoch, SRC, TGT, valid_iter, is_valid=False)
 
         print("Validation...")
         model_par.eval()
-        loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
-                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args, epoch,
-                         steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=True)
 
-        if compression_scheduler:
-            compression_scheduler.on_epoch_end(epoch)
+        # IF PRUNING
+        # loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
+        #                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args, epoch,
+        #                  steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=True)
+
+        loss = run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
+                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args, epoch,
+                  steps_per_epoch, SRC, TGT, valid_iter, is_valid=True)
+
+        # if compression_scheduler:
+        #     compression_scheduler.on_epoch_end(epoch)
 
         print('Validation loss:', loss)
         print('Validation perplexity: ', np.exp(loss))

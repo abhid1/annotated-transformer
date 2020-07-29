@@ -56,10 +56,11 @@ class MultiGPULossCompute(object):
 
         # Backprop all loss through transformer.
         if self.opt is not None:
-            if compression_scheduler:
-                compression_scheduler.before_backward_pass(epoch, minibatch_id=i,
-                                                           minibatches_per_epoch=steps_per_epoch,
-                                                           loss=total*normalize, return_loss_components=False)
+            # IF PRUNING
+            # if compression_scheduler:
+            #     compression_scheduler.before_backward_pass(epoch, minibatch_id=i,
+            #                                                minibatches_per_epoch=steps_per_epoch,
+            #                                                loss=total*normalize, return_loss_components=False)
             out_grad = [Variable(torch.cat(og, dim=1)) for og in out_grad]
             o1 = out
             o2 = nn.parallel.gather(out_grad, target_device=self.devices[0])
