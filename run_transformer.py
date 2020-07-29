@@ -56,7 +56,11 @@ def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, SRC=
         # if compression_scheduler:
         #     compression_scheduler.on_minibatch_begin(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
         out = model.forward(batch.src, batch.trg, batch.src_mask, batch.trg_mask)
-        loss = loss_compute(out, batch.trg_y, batch.ntokens, i, epoch, steps_per_epoch, compression_scheduler)
+
+        # IF PRUNING
+        # loss = loss_compute(out, batch.trg_y, batch.ntokens, i, epoch, steps_per_epoch, compression_scheduler)
+        loss = loss_compute(out, batch.trg_y, batch.ntokens, i, epoch, steps_per_epoch)
+
         total_loss += loss
         total_tokens += batch.ntokens
         tokens += batch.ntokens
@@ -253,7 +257,7 @@ def train(args):
 
     overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
     quantizer = QuantAwareTrainRangeLinearQuantizer(deepcopy(model), optimizer=model_opt.optimizer,
-                                                    mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
+                                                    mode="ASYMMETRIC_UNSIGNED", overrides=overrides, qu)
     dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
                    torch.ones(130, 22).to(dtype=torch.long),
                    torch.ones(130, 1, 10).to(dtype=torch.long),
