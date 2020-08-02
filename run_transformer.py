@@ -344,62 +344,62 @@ def test(args):
     test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=False,
                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
 
-    ## Post-Linear Quantization Code
-    overrides_yaml = """
-    encoder.layers.*.self_attn.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    encoder.layers.*.feed_forward.*:
-        bits_activations: 8
-        bits_weights: 8
-        bits_bias: 8
-    encoder.layers.*.sublayer.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    encoder.norm.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    decoder.layers.*.self_attn.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    decoder.layers.*.feed_forward.*:
-        bits_activations: 8
-        bits_weights: 8
-        bits_bias: 8
-    decoder.layers.*.src_attn.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    decoder.layers.*.sublayer.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    decoder.norm.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    src_embed.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    tgt_embed.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    generator.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    """
+    # ## Post-Linear Quantization Code
+    # overrides_yaml = """
+    # encoder.layers.*.self_attn.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # encoder.layers.*.feed_forward.*:
+    #     bits_activations: 8
+    #     bits_weights: 8
+    #     bits_bias: 8
+    # encoder.layers.*.sublayer.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # encoder.norm.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.layers.*.self_attn.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.layers.*.feed_forward.*:
+    #     bits_activations: 8
+    #     bits_weights: 8
+    #     bits_bias: 8
+    # decoder.layers.*.src_attn.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.layers.*.sublayer.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.norm.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # src_embed.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # tgt_embed.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # generator.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # """
+    #
+    # overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
+    # quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
 
-    overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
-    quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
-
-    Post-Linear Quantization block
+    # Post-Linear Quantization block
     dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
                    torch.ones(130, 22).to(dtype=torch.long),
                    torch.ones(130, 1, 10).to(dtype=torch.long),
