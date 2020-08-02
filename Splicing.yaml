@@ -19,21 +19,43 @@
 
 version: 1
 pruners:
-  feed_forward_pruner:
+  pruner1:
     class: SplicingPruner
-    initial_sparsity : 0.05
-    final_sparsity: 0.70
-    weights: [encoder.layers.0.feed_forward.w_1.weight, encoder.layers.0.feed_forward.w_2.weight, encoder.layers.1.feed_forward.w_1.weight,
-              encoder.layers.1.feed_forward.w_2.weight, encoder.layers.2.feed_forward.w_1.weight, encoder.layers.2.feed_forward.w_2.weight,
-              encoder.layers.3.feed_forward.w_1.weight, encoder.layers.3.feed_forward.w_2.weight, encoder.layers.4.feed_forward.w_1.weight,
-              encoder.layers.4.feed_forward.w_2.weight, encoder.layers.5.feed_forward.w_1.weight, encoder.layers.5.feed_forward.w_2.weight,
-              decoder.layers.0.feed_forward.w_1.weight, decoder.layers.0.feed_forward.w_2.weight, decoder.layers.1.feed_forward.w_1.weight,
-              decoder.layers.1.feed_forward.w_2.weight, decoder.layers.2.feed_forward.w_1.weight, decoder.layers.2.feed_forward.w_2.weight,
-              decoder.layers.3.feed_forward.w_1.weight, decoder.layers.3.feed_forward.w_2.weight, decoder.layers.4.feed_forward.w_1.weight,
-              decoder.layers.4.feed_forward.w_2.weight, decoder.layers.5.feed_forward.w_1.weight, decoder.layers.5.feed_forward.w_2.weight]
+    low_thresh_mult: 0.9 # 0.6
+    hi_thresh_mult: 1.1 # 0.7
+    sensitivity_multiplier: 0.005   # 0.015
+    sensitivities:
+      encoder.layers.0.feed_forward.w_1.weight: .5
+      encoder.layers.0.feed_forward.w_2.weight: .5
+      encoder.layers.1.feed_forward.w_1.weight: .5
+      encoder.layers.1.feed_forward.w_2.weight: .5
+      encoder.layers.2.feed_forward.w_1.weight: .5
+      encoder.layers.2.feed_forward.w_2.weight: .5
+      encoder.layers.3.feed_forward.w_1.weight: .5
+      encoder.layers.3.feed_forward.w_2.weight: .5
+      encoder.layers.4.feed_forward.w_1.weight: .5
+      encoder.layers.4.feed_forward.w_2.weight: .5
+      encoder.layers.5.feed_forward.w_1.weight: .5
+      encoder.layers.5.feed_forward.w_2.weight: .5
+      decoder.layers.0.feed_forward.w_1.weight: .5
+      decoder.layers.0.feed_forward.w_2.weight: .5
+      decoder.layers.1.feed_forward.w_1.weight: .5
+      decoder.layers.1.feed_forward.w_2.weight: .5
+      decoder.layers.2.feed_forward.w_1.weight: .5
+      decoder.layers.2.feed_forward.w_2.weight: .5
+      decoder.layers.3.feed_forward.w_1.weight: .5
+      decoder.layers.3.feed_forward.w_2.weight: .5
+      decoder.layers.4.feed_forward.w_1.weight: .5
+      decoder.layers.4.feed_forward.w_2.weight: .5
+      decoder.layers.5.feed_forward.w_1.weight: .5
+      decoder.layers.5.feed_forward.w_2.weight: .5
 policies:
   - pruner:
-      instance_name: feed_forward_pruner
-    starting_epoch: 2
+      instance_name: pruner1
+      args:
+        keep_mask: True
+        #mini_batch_pruning_frequency: 1
+        mask_on_forward_only: True
+    starting_epoch: 0
     ending_epoch: 20
     frequency: 1
