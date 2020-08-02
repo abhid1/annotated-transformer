@@ -24,6 +24,7 @@ quantizers:
     bits_activations: 8
     bits_weights: 8
     mode: 'ASYMMETRIC_UNSIGNED'
+    quantize_inputs: False
     overrides:
        encoder.layers.*.self_attn.*:
            bits_activations: null

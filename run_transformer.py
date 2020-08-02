@@ -215,7 +215,10 @@ def train(args):
 
     source = args.compress
 
-    compression_scheduler = distiller.config.file_config(model_par.module, model_opt.optimizer, args.compress)
+    if args.compress:
+        compression_scheduler = distiller.config.file_config(model_par.module, model_opt.optimizer, args.compress)
+
+    print(model_par.module)
 
     best_bleu = 0
 
