@@ -20,7 +20,7 @@
 version: 1
 pruners:
   feed_forward_pruner:
-    class: AutomatedGradualPruner
+    class: SplicingPruner
     initial_sparsity : 0.05
     final_sparsity: 0.70
     weights: [encoder.layers.0.feed_forward.w_1.weight, encoder.layers.0.feed_forward.w_2.weight, encoder.layers.1.feed_forward.w_1.weight,
