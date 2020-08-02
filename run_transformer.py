@@ -399,13 +399,13 @@ def test(args):
     # overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
     # quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
 
-    # Post-Linear Quantization block
-    dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
-                   torch.ones(130, 22).to(dtype=torch.long),
-                   torch.ones(130, 1, 10).to(dtype=torch.long),
-                   torch.ones(130, 22, 22).to(dtype=torch.long))
-    quantizer.prepare_model(dummy_input)
-    model = quantizer.model
+    # # Post-Linear Quantization block
+    # dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
+    #                torch.ones(130, 22).to(dtype=torch.long),
+    #                torch.ones(130, 1, 10).to(dtype=torch.long),
+    #                torch.ones(130, 22, 22).to(dtype=torch.long))
+    # quantizer.prepare_model(dummy_input)
+    # model = quantizer.model
 
     model.eval()
     print(model)
