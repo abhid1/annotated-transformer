@@ -9,6 +9,7 @@ import numpy as np
 import distiller
 import distiller.apputils as apputils
 import math
+import os
 import condensa
 from condensa.schemes import Compose, Prune, Quantize
 
@@ -27,6 +28,7 @@ from transformer.metrics import evaluate_bleu
 from distiller.quantization import PostTrainLinearQuantizer
 from distiller.quantization import QuantAwareTrainRangeLinearQuantizer
 from distiller.data_loggers import TensorBoardLogger, PythonLogger
+from distiller.data_loggers import collect_quant_stats
 
 # GPUs to use
 devices = [0]  # Or use [0, 1] etc for multiple GPUs
@@ -42,8 +44,8 @@ spacy_de = spacy.load('de')
 spacy_en = spacy.load('en')
 
 
-# def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_iter=None, is_valid=False):
-def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, compression_scheduler=None, SRC=None, TGT=None, valid_iter=None, is_valid=False):
+# def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, compression_scheduler=None, SRC=None, TGT=None, valid_iter=None, is_valid=False):
+def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_iter=None, is_valid=False):
     """
     Standard Training and Logging Function
     """
@@ -53,13 +55,13 @@ def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, comp
     tokens = 0
     for i, batch in enumerate(data_iter):
         # IF PRUNING
-        if compression_scheduler:
-            compression_scheduler.on_minibatch_begin(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
+        #if compression_scheduler:
+         #   compression_scheduler.on_minibatch_begin(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
         out = model.forward(batch.src, batch.trg, batch.src_mask, batch.trg_mask)
 
         # IF PRUNING
-        loss = loss_compute(out, batch.trg_y, batch.ntokens, i, epoch, steps_per_epoch, compression_scheduler)
-        # loss = loss_compute(out, batch.trg_y, batch.ntokens)
+        #loss = loss_compute(out, batch.trg_y, batch.ntokens, i, epoch, steps_per_epoch, compression_scheduler)
+        loss = loss_compute(out, batch.trg_y, batch.ntokens)
 
         total_loss += loss
         total_tokens += batch.ntokens
@@ -79,8 +81,8 @@ def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, comp
             run_validation_bleu_score(model.module, SRC, TGT, valid_iter)
 
         # IF PRUNING
-        if compression_scheduler:
-            compression_scheduler.on_minibatch_end(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
+        #if compression_scheduler:
+         #   compression_scheduler.on_minibatch_end(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
 
     return total_loss / total_tokens
 
@@ -181,13 +183,13 @@ def train(args):
         model.load_state_dict(torch.load(args.load_model))
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
-    model.cuda()
+    # model.cuda()
 
     # Used by original authors, hurts perplexity but improves BLEU score
     criterion = LabelSmoothing(size=len(TGT.vocab), padding_idx=pad_idx, smoothing=0.1)
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
-    criterion.cuda()
+    # criterion.cuda()
 
     train_iter = MyIterator(train, batch_size=args.batch_size, device=0, repeat=False,
                             sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=True)
@@ -231,32 +233,32 @@ def train(args):
         print("Training...")
         model_par.train()
 
-        if compression_scheduler:
-            compression_scheduler.on_epoch_begin(epoch)
+        # if compression_scheduler:
+        #     compression_scheduler.on_epoch_begin(epoch)
 
         # IF PRUNING
-        run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
-                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args, epoch,
-                  steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=False)
-
         # run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
-        #           MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args,
-        #           SRC, TGT, valid_iter, is_valid=False)
+        #           MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args, epoch,
+        #           steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=False)
+
+        run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
+                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args,
+                  SRC, TGT, valid_iter, is_valid=False)
 
         print("Validation...")
         model_par.eval()
 
         # IF PRUNING
-        loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
-                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args, epoch,
-                         steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=True)
-
         # loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
-        #                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args,
-        #                  SRC, TGT, valid_iter, is_valid=True)
+        #                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args, epoch,
+        #                  steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=True)
 
-        if compression_scheduler:
-            compression_scheduler.on_epoch_end(epoch)
+        loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
+                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args,
+                         SRC, TGT, valid_iter, is_valid=True)
+
+        # if compression_scheduler:
+        #     compression_scheduler.on_epoch_end(epoch)
 
         print('Validation loss:', loss)
         print('Validation perplexity: ', np.exp(loss))
@@ -338,6 +340,8 @@ def test(args):
 
     print("Num parameters in original fc layer", np.sum(w2_param))
 
+    criterion = LabelSmoothing(size=len(TGT.vocab), padding_idx=pad_idx, smoothing=0.1)
+
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
     model.cuda()
 
@@ -347,9 +351,9 @@ def test(args):
     ## Post-Linear Quantization Code
     overrides_yaml = """
     encoder.layers.*.self_attn.*:
-        bits_activations: 16
-        bits_weights: 16
-        bits_bias: 16
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
     encoder.layers.*.feed_forward.*:
         bits_activations: null
         bits_weights: null
@@ -363,17 +367,17 @@ def test(args):
         bits_weights: null
         bits_bias: null
     decoder.layers.*.self_attn.*:
-        bits_activations: 16
-        bits_weights: 16
-        bits_bias: 16
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
     decoder.layers.*.feed_forward.*:
         bits_activations: null
         bits_weights: null
         bits_bias: null
     decoder.layers.*.src_attn.*:
-        bits_activations: 16
-        bits_weights: 16
-        bits_bias: 16
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
     decoder.layers.*.sublayer.*:
         bits_activations: null
         bits_weights: null
@@ -395,6 +399,22 @@ def test(args):
         bits_weights: null
         bits_bias: null
     """
+
+    distiller.utils.assign_layer_fq_names(model)
+    stats_file = './acts_quantization_stats.yaml'
+
+    if not os.path.isfile(stats_file):
+        def eval_for_stats(model):
+            valid_iter = MyIterator(val, batch_size=args.batch_size, device=0, repeat=False,
+                                    sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn,
+                                    train=False,
+                                    sort=False)
+            model.eval()
+            run_epoch((rebatch(pad_idx, b) for b in valid_iter), model,
+                             MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args,
+                             SRC, TGT, valid_iter, is_valid=True)
+
+        collect_quant_stats(model, eval_for_stats, save_dir='.')
 
     overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
     quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
