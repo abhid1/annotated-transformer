@@ -400,9 +400,10 @@ def test(args):
         bits_weights: null
         bits_bias: null
     """
+    model_par = nn.DataParallel(model, device_ids=devices)
 
     # CREATE STATS FILE
-    #distiller.utils.assign_layer_fq_names(model)
+    distiller.utils.assign_layer_fq_names(model_par.module)
     stats_file = './acts_quantization_stats.yaml'
 
     if not os.path.isfile(stats_file):
@@ -412,11 +413,11 @@ def test(args):
                                     train=False,
                                     sort=False)
             model.eval()
-            run_epoch((rebatch(pad_idx, b) for b in valid_iter), model,
+            run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
                              MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args,
                              SRC, TGT, valid_iter, is_valid=True)
 
-        collect_quant_stats(distiller.utils.make_non_parallel_copy(model), eval_for_stats, save_dir='.')
+        collect_quant_stats(distiller.utils.make_non_parallel_copy(model_par), eval_for_stats, save_dir='.')
 
     overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
     quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides,
