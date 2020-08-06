@@ -17,4 +17,4 @@ class PointerwiseFeedforward(nn.Module):
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        return self.w_2(self.dropout(relu(self.w_1(x))))
+        return self.w_2(self.dropout(self.relu(self.w_1(x))))
