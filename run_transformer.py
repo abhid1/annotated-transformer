@@ -57,7 +57,7 @@ def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_it
         # IF PRUNING
         #if compression_scheduler:
          #   compression_scheduler.on_minibatch_begin(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
-        out = model.forward(batch.src, batch.trg, batch.src_mask, batch.trg_mask)
+        out = model.forward(batch.src.cuda(), batch.trg.cuda(), batch.src_mask.cuda(), batch.trg_mask.cuda())
 
         # IF PRUNING
         #loss = loss_compute(out, batch.trg_y, batch.ntokens, i, epoch, steps_per_epoch, compression_scheduler)
@@ -75,10 +75,10 @@ def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_it
 
         if i % args.valid_every == 1 and valid_iter is not None:
             model.eval()
-            run_validation_bleu_score(model.module, SRC, TGT, valid_iter)
+            run_validation_bleu_score(model, SRC, TGT, valid_iter)
 
         if is_valid:
-            run_validation_bleu_score(model.module, SRC, TGT, valid_iter)
+            run_validation_bleu_score(model, SRC, TGT, valid_iter)
 
         # IF PRUNING
         #if compression_scheduler:
@@ -400,10 +400,9 @@ def test(args):
         bits_weights: null
         bits_bias: null
     """
-    model_par = nn.DataParallel(model, device_ids=devices)
 
     # CREATE STATS FILE
-    distiller.utils.assign_layer_fq_names(model_par.module)
+    distiller.utils.assign_layer_fq_names(model)
     stats_file = './acts_quantization_stats.yaml'
 
     if not os.path.isfile(stats_file):
@@ -413,11 +412,11 @@ def test(args):
                                     train=False,
                                     sort=False)
             model.eval()
-            run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
+            run_epoch((rebatch(pad_idx, b) for b in valid_iter), model,
                              MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args,
                              SRC, TGT, valid_iter, is_valid=True)
 
-        collect_quant_stats(distiller.utils.make_non_parallel_copy(model_par), eval_for_stats, save_dir='.')
+        collect_quant_stats(distiller.utils.make_non_parallel_copy(model), eval_for_stats, save_dir='.')
 
     overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
     quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides,
