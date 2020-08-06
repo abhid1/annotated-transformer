@@ -417,7 +417,7 @@ def test(args):
                              MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args,
                              SRC, TGT, valid_iter, is_valid=True)
 
-        collect_quant_stats(model_par, eval_for_stats, save_dir='.')
+        collect_quant_stats(distiller.utils.make_non_parallel_copy(model_par), eval_for_stats, save_dir='.')
 
     overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
     quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
