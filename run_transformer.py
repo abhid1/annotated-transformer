@@ -401,22 +401,21 @@ def test(args):
         bits_bias: null
     """
 
-    model_par = nn.DataParallel(model, device_ids=devices)
-    distiller.utils.assign_layer_fq_names(model_par.module)
+    distiller.utils.assign_layer_fq_names(model)
     stats_file = './acts_quantization_stats.yaml'
 
     if not os.path.isfile(stats_file):
-        def eval_for_stats(model_par):
+        def eval_for_stats(model):
             valid_iter = MyIterator(val, batch_size=args.batch_size, device=0, repeat=False,
                                     sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn,
                                     train=False,
                                     sort=False)
-            model_par.eval()
-            run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
+            model.eval()
+            run_epoch((rebatch(pad_idx, b) for b in valid_iter), model,
                              MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args,
                              SRC, TGT, valid_iter, is_valid=True)
 
-        collect_quant_stats(model_par, eval_for_stats, save_dir='.')
+        collect_quant_stats(model, eval_for_stats, save_dir='.')
 
     overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
     quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
