@@ -340,6 +340,7 @@ def test(args):
 
     print("Num parameters in original fc layer", np.sum(w2_param))
 
+    pad_idx = TGT.vocab.stoi[BLANK_WORD]
     criterion = LabelSmoothing(size=len(TGT.vocab), padding_idx=pad_idx, smoothing=0.1)
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
