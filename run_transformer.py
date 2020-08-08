@@ -337,18 +337,34 @@ def test(args):
     params = sum([np.prod(p.size()) for p in model_parameters])
     print("Number of parameters: ", params)
 
-    w2_param = []
+    feed_forward = []
+    attn = []
+    embed = []
+    sublayer = []
+    generator = []
     for name, param in model.named_parameters():
         if name.__contains__("feed_forward"):
-            w2_param.append(np.prod(param.size()))
+            feed_forward.append(np.prod(param.size()))
+        if name.__contains__("attn"):
+            attn.append(np.prod(param.size()))
+        if name.__contains__("embed"):
+            embed.append(np.prod(param.size()))
+        if name.__contains__("sublayer"):
+            sublayer.append(np.prod(param.size()))
+        if name.__contains__("generator"):
+            generator.append(np.prod(param.size()))
 
-    print("Num parameters in original fc layer", np.sum(w2_param))
+    print("Num parameters in original feed forward layer", np.sum(feed_forward))
+    print("Num parameters in original attn layer", np.sum(attn))
+    print("Num parameters in original embedding layer", np.sum(embed))
+    print("Num parameters in original sublayer", np.sum(sublayer))
+    print("Num parameters in original generator layer", np.sum(generator))
 
     # pad_idx = TGT.vocab.stoi[BLANK_WORD]
     # criterion = LabelSmoothing(size=len(TGT.vocab), padding_idx=pad_idx, smoothing=0.1)
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
-    #model.cuda()
+    model.cuda()
 
     test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=False,
                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
@@ -475,7 +491,7 @@ def test(args):
     target_sentences = [" ".join(x) for x in tgt]
 
     bleu_validation = evaluate_bleu(translation_sentences, target_sentences)
-    print('Test BLEU Score', bleu_validation)
+    print('Test BLEU Score:', bleu_validation)
 
     # Save quantized model!
     # model_file = args.save_to + args.exp_name + '.bin'
