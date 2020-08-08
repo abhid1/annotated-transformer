@@ -360,9 +360,9 @@ def test(args):
         bits_weights: null
         bits_bias: null
     encoder.layers.*.feed_forward.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
+        bits_activations: 8
+        bits_weights: 8
+        bits_bias: 8
     encoder.layers.*.sublayer.*:
         bits_activations: null
         bits_weights: null
@@ -376,9 +376,9 @@ def test(args):
         bits_weights: null
         bits_bias: null
     decoder.layers.*.feed_forward.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
+        bits_activations: 8
+        bits_weights: 8
+        bits_bias: 8
     decoder.layers.*.src_attn.*:
         bits_activations: null
         bits_weights: null
@@ -392,13 +392,13 @@ def test(args):
         bits_weights: null
         bits_bias: null
     src_embed.*:
-        bits_activations: 8
-        bits_weights: 8
-        bits_bias: 8
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
     tgt_embed.*:
-        bits_activations: 8
-        bits_weights: 8
-        bits_bias: 8
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
     generator.*:
         bits_activations: null
         bits_weights: null
@@ -408,7 +408,7 @@ def test(args):
     # CREATE STATS FILE
     # distiller.utils.assign_layer_fq_names(model)
     # stats_file = './acts_quantization_stats.yaml'
-
+    #
     # if not os.path.isfile(stats_file):
     #     def eval_for_stats(model):
     #         valid_iter = MyIterator(val, batch_size=args.batch_size, device=0, repeat=False,
@@ -419,19 +419,19 @@ def test(args):
     #         run_epoch((rebatch(pad_idx, b) for b in valid_iter), model,
     #                          MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args,
     #                          SRC, TGT, valid_iter, is_valid=True)
-    #
-    #     collect_quant_stats(distiller.utils.make_non_parallel_copy(model), eval_for_stats, save_dir='.')
 
-    # overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
-    # quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
+        # collect_quant_stats(distiller.utils.make_non_parallel_copy(model), eval_for_stats, save_dir='.')
+
+    overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
+    quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
 
     # Post-Linear Quantization block
-    # dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
-    #                torch.ones(130, 22).to(dtype=torch.long),
-    #                torch.ones(130, 1, 10).to(dtype=torch.long),
-    #                torch.ones(130, 22, 22).to(dtype=torch.long))
-    # quantizer.prepare_model(dummy_input)
-    # model = quantizer.model
+    dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
+                   torch.ones(130, 22).to(dtype=torch.long),
+                   torch.ones(130, 1, 10).to(dtype=torch.long),
+                   torch.ones(130, 22, 22).to(dtype=torch.long))
+    quantizer.prepare_model(dummy_input)
+    model = quantizer.model
 
     model.eval()
     print(model)
