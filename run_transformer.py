@@ -217,8 +217,8 @@ def train(args):
 
     source = args.compress
 
-    if args.compress:
-        compression_scheduler = distiller.config.file_config(model_par.module, model_opt.optimizer, args.compress)
+    # if args.compress:
+    #     compression_scheduler = distiller.config.file_config(model_par.module, model_opt.optimizer, args.compress)
 
     print(model_par.module)
 
@@ -340,11 +340,11 @@ def test(args):
 
     print("Num parameters in original fc layer", np.sum(w2_param))
 
-    pad_idx = TGT.vocab.stoi[BLANK_WORD]
+    # pad_idx = TGT.vocab.stoi[BLANK_WORD]
     # criterion = LabelSmoothing(size=len(TGT.vocab), padding_idx=pad_idx, smoothing=0.1)
 
     # UNCOMMENT WHEN RUNNING ON RESEARCH MACHINES - run on GPU
-    model.cuda()
+    #model.cuda()
 
     test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=False,
                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
@@ -356,9 +356,9 @@ def test(args):
         bits_weights: null
         bits_bias: null
     encoder.layers.*.feed_forward.*:
-        bits_activations: 16
-        bits_weights: 16
-        bits_bias: 16
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
     encoder.layers.*.sublayer.*:
         bits_activations: null
         bits_weights: null
@@ -372,9 +372,9 @@ def test(args):
         bits_weights: null
         bits_bias: null
     decoder.layers.*.feed_forward.*:
-        bits_activations: 16
-        bits_weights: 16
-        bits_bias: 16
+        bits_activations: null
+        bits_weights: null
+        bits_bias: null
     decoder.layers.*.src_attn.*:
         bits_activations: null
         bits_weights: null
@@ -388,13 +388,13 @@ def test(args):
         bits_weights: null
         bits_bias: null
     src_embed.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
+        bits_activations: 8
+        bits_weights: 8
+        bits_bias: 8
     tgt_embed.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
+        bits_activations: 8
+        bits_weights: 8
+        bits_bias: 8
     generator.*:
         bits_activations: null
         bits_weights: null
@@ -418,16 +418,16 @@ def test(args):
     #
     #     collect_quant_stats(distiller.utils.make_non_parallel_copy(model), eval_for_stats, save_dir='.')
 
-    overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
-    quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
+    # overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
+    # quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
 
     # Post-Linear Quantization block
-    dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
-                   torch.ones(130, 22).to(dtype=torch.long),
-                   torch.ones(130, 1, 10).to(dtype=torch.long),
-                   torch.ones(130, 22, 22).to(dtype=torch.long))
-    quantizer.prepare_model(dummy_input)
-    model = quantizer.model
+    # dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
+    #                torch.ones(130, 22).to(dtype=torch.long),
+    #                torch.ones(130, 1, 10).to(dtype=torch.long),
+    #                torch.ones(130, 22, 22).to(dtype=torch.long))
+    # quantizer.prepare_model(dummy_input)
+    # model = quantizer.model
 
     model.eval()
     print(model)
@@ -445,7 +445,7 @@ def test(args):
             trg = trg_orig[m:(m + 1)]
             src_mask = (src != SRC.vocab.stoi["<blank>"]).unsqueeze(-2)
             out = greedy_decode(model, src, src_mask,
-                                max_len=60, start_symbol=TGT.vocab.stoi["<s>"])
+                                max_len=100, start_symbol=TGT.vocab.stoi["<s>"])
             translate_str = []
             for i in range(0, out.size(0)):
                 for j in range(1, out.size(1)):
@@ -474,9 +474,9 @@ def test(args):
     print('Test BLEU Score', bleu_validation)
 
     # Save quantized model!
-    model_file = args.save_to + args.exp_name + '.bin'
-    print('Saving latest model without optimizer [%s]' % model_file)
-    torch.save(model.state_dict(), model_file)
+    # model_file = args.save_to + args.exp_name + '.bin'
+    # print('Saving latest model without optimizer [%s]' % model_file)
+    # torch.save(model.state_dict(), model_file)
 
 
 if __name__ == '__main__':
