@@ -223,6 +223,7 @@ def train(args):
     print(model_par.module)
 
     best_bleu = 0
+    best_epoch = 0
 
     steps_per_epoch = math.ceil(len(train_iter.data()) / 60)
 
@@ -269,10 +270,13 @@ def train(args):
             model_file = args.save_to + args.exp_name + 'validation.bin'
             print('Saving model without optimizer [%s]' % model_file)
             torch.save(model_par.module.state_dict(), model_file)
+            best_epoch = epoch
 
         model_file = args.save_to + args.exp_name + 'latest.bin'
         print('Saving latest model without optimizer [%s]' % model_file)
         torch.save(model_par.module.state_dict(), model_file)
+
+    print('The best epoch was:', best_epoch)
 
 
 class SimpleLossCompute(object):
