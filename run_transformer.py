@@ -119,7 +119,7 @@ def run_validation_bleu_score(model, SRC, TGT, valid_iter):
     for i, batch in enumerate(valid_iter):
         src = batch.src.transpose(0, 1)[:1].cuda()
         src_mask = (src != SRC.vocab.stoi[BLANK_WORD]).unsqueeze(-2)
-        out = greedy_decode(model, src, src_mask, max_len=60, start_symbol=TGT.vocab.stoi[BOS_WORD])
+        out = greedy_decode(model, src, src_mask, max_len=100, start_symbol=TGT.vocab.stoi[BOS_WORD])
         for k in range(out.size(0)):
             translate_str = []
             for i in range(1, out.size(1)):
