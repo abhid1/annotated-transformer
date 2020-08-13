@@ -44,8 +44,8 @@ spacy_de = spacy.load('de')
 spacy_en = spacy.load('en')
 
 
-# def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, compression_scheduler=None, SRC=None, TGT=None, valid_iter=None, is_valid=False):
-def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_iter=None, is_valid=False):
+# def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_iter=None, is_valid=False):
+def run_epoch(data_iter, model, loss_compute, args, epoch, steps_per_epoch, compression_scheduler=None, SRC=None, TGT=None, valid_iter=None, is_valid=False):
     """
     Standard Training and Logging Function
     """
