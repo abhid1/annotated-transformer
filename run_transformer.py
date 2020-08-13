@@ -10,8 +10,8 @@ import distiller
 import distiller.apputils as apputils
 import math
 import os
-import condensa
-from condensa.schemes import Compose, Prune, Quantize
+#import condensa
+#from condensa.schemes import Compose, Prune, Quantize
 
 from copy import deepcopy
 from torchtext import data, datasets
@@ -55,13 +55,13 @@ def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_it
     tokens = 0
     for i, batch in enumerate(data_iter):
         # IF PRUNING
-        #if compression_scheduler:
-         #   compression_scheduler.on_minibatch_begin(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
+        if compression_scheduler:
+           compression_scheduler.on_minibatch_begin(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
         out = model.forward(batch.src, batch.trg, batch.src_mask, batch.trg_mask)
 
         # IF PRUNING
-        #loss = loss_compute(out, batch.trg_y, batch.ntokens, i, epoch, steps_per_epoch, compression_scheduler)
-        loss = loss_compute(out, batch.trg_y, batch.ntokens)
+        loss = loss_compute(out, batch.trg_y, batch.ntokens, i, epoch, steps_per_epoch, compression_scheduler)
+        #loss = loss_compute(out, batch.trg_y, batch.ntokens)
 
         total_loss += loss
         total_tokens += batch.ntokens
@@ -81,8 +81,8 @@ def run_epoch(data_iter, model, loss_compute, args, SRC=None, TGT=None, valid_it
             run_validation_bleu_score(model.module, SRC, TGT, valid_iter)
 
         # IF PRUNING
-        #if compression_scheduler:
-         #   compression_scheduler.on_minibatch_end(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
+        if compression_scheduler:
+           compression_scheduler.on_minibatch_end(epoch, minibatch_id=i, minibatches_per_epoch=steps_per_epoch)
 
     return total_loss / total_tokens
 
@@ -217,8 +217,8 @@ def train(args):
 
     source = args.compress
 
-    # if args.compress:
-    #     compression_scheduler = distiller.config.file_config(model_par.module, model_opt.optimizer, args.compress)
+    if args.compress:
+        compression_scheduler = distiller.config.file_config(model_par.module, None, args.compress)
 
     print(model_par.module)
 
@@ -234,32 +234,32 @@ def train(args):
         print("Training...")
         model_par.train()
 
-        # if compression_scheduler:
-        #     compression_scheduler.on_epoch_begin(epoch)
+        if compression_scheduler:
+            compression_scheduler.on_epoch_begin(epoch)
 
         # IF PRUNING
-        # run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
-        #           MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args, epoch,
-        #           steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=False)
-
         run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
-                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args,
-                  SRC, TGT, valid_iter, is_valid=False)
+                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args, epoch,
+                  steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=False)
+
+        # run_epoch((rebatch(pad_idx, b) for b in train_iter), model_par,
+        #           MultiGPULossCompute(model.generator, criterion, devices=devices, opt=model_opt), args,
+        #           SRC, TGT, valid_iter, is_valid=False)
 
         print("Validation...")
         model_par.eval()
 
         # IF PRUNING
-        # loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
-        #                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args, epoch,
-        #                  steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=True)
-
         loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
-                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args,
-                         SRC, TGT, valid_iter, is_valid=True)
+                         MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args, epoch,
+                         steps_per_epoch, compression_scheduler, SRC, TGT, valid_iter, is_valid=True)
 
-        # if compression_scheduler:
-        #     compression_scheduler.on_epoch_end(epoch)
+        # loss = run_epoch((rebatch(pad_idx, b) for b in valid_iter), model_par,
+        #                  MultiGPULossCompute(model.generator, criterion, devices=devices, opt=None), args,
+        #                  SRC, TGT, valid_iter, is_valid=True)
+
+        if compression_scheduler:
+            compression_scheduler.on_epoch_end(epoch)
 
         print('Validation loss:', loss)
         print('Validation perplexity: ', np.exp(loss))
@@ -337,28 +337,37 @@ def test(args):
     params = sum([np.prod(p.size()) for p in model_parameters])
     print("Number of parameters: ", params)
 
-    feed_forward = []
-    attn = []
-    embed = []
-    sublayer = []
-    generator = []
-    for name, param in model.named_parameters():
-        if name.__contains__("feed_forward"):
-            feed_forward.append(np.prod(param.size()))
-        if name.__contains__("attn"):
-            attn.append(np.prod(param.size()))
-        if name.__contains__("embed"):
-            embed.append(np.prod(param.size()))
-        if name.__contains__("sublayer"):
-            sublayer.append(np.prod(param.size()))
-        if name.__contains__("generator"):
-            generator.append(np.prod(param.size()))
+    # feed_forward = []
+    # attn = []
+    # embed = []
+    # sublayer = []
+    # generator = []
+    # for name, param in model.named_parameters():
+    #     if name.__contains__("feed_forward"):
+    #         feed_forward.append(np.prod(param.size()))
+    #     if name.__contains__("attn"):
+    #         attn.append(np.prod(param.size()))
+    #     if name.__contains__("embed"):
+    #         embed.append(np.prod(param.size()))
+    #     if name.__contains__("sublayer"):
+    #         sublayer.append(np.prod(param.size()))
+    #     if name.__contains__("generator"):
+    #         generator.append(np.prod(param.size()))
 
-    print("Num parameters in original feed forward layer", np.sum(feed_forward))
-    print("Num parameters in original attn layer", np.sum(attn))
-    print("Num parameters in original embedding layer", np.sum(embed))
-    print("Num parameters in original sublayer", np.sum(sublayer))
-    print("Num parameters in original generator layer", np.sum(generator))
+    feed_forward = []
+    # attn = []
+    # embed = []
+    # sublayer = []
+    # generator = []
+    for name, param in model.named_parameters():
+        if name.__contains__("embed") or name.__contains__("generator"):
+            feed_forward.append(np.prod(param.size()))
+
+    print("Num parameters:", np.sum(feed_forward))
+    # print("Num parameters in original attn layer", np.sum(attn))
+    # print("Num parameters in original embedding layer", np.sum(embed))
+    # print("Num parameters in original sublayer", np.sum(sublayer))
+    # print("Num parameters in original generator layer", np.sum(generator))
 
     # pad_idx = TGT.vocab.stoi[BLANK_WORD]
     # criterion = LabelSmoothing(size=len(TGT.vocab), padding_idx=pad_idx, smoothing=0.1)
@@ -369,57 +378,57 @@ def test(args):
     test_iter = MyIterator(test, batch_size=args.batch_size, device=0, repeat=False,
                            sort_key=lambda x: (len(x.src), len(x.trg)), batch_size_fn=batch_size_fn, train=False)
 
-    ## Post-Linear Quantization Code
-    overrides_yaml = """
-    encoder.layers.*.self_attn.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    encoder.layers.*.feed_forward.*:
-        bits_activations: 8
-        bits_weights: 8
-        bits_bias: 8
-    encoder.layers.*.sublayer.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    encoder.norm.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    decoder.layers.*.self_attn.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    decoder.layers.*.feed_forward.*:
-        bits_activations: 8
-        bits_weights: 8
-        bits_bias: 8
-    decoder.layers.*.src_attn.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    decoder.layers.*.sublayer.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    decoder.norm.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    src_embed.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    tgt_embed.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    generator.*:
-        bits_activations: null
-        bits_weights: null
-        bits_bias: null
-    """
+    # ## Post-Linear Quantization Code
+    # overrides_yaml = """
+    # encoder.layers.*.self_attn.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # encoder.layers.*.feed_forward.*:
+    #     bits_activations: 8
+    #     bits_weights: 8
+    #     bits_bias: 8
+    # encoder.layers.*.sublayer.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # encoder.norm.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.layers.*.self_attn.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.layers.*.feed_forward.*:
+    #     bits_activations: 8
+    #     bits_weights: 8
+    #     bits_bias: 8
+    # decoder.layers.*.src_attn.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.layers.*.sublayer.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # decoder.norm.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # src_embed.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # tgt_embed.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # generator.*:
+    #     bits_activations: null
+    #     bits_weights: null
+    #     bits_bias: null
+    # """
 
     # CREATE STATS FILE
     # distiller.utils.assign_layer_fq_names(model)
@@ -438,16 +447,16 @@ def test(args):
 
         # collect_quant_stats(distiller.utils.make_non_parallel_copy(model), eval_for_stats, save_dir='.')
 
-    overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
-    quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
+    # overrides = distiller.utils.yaml_ordered_load(overrides_yaml)
+    # quantizer = PostTrainLinearQuantizer(deepcopy(model), mode="ASYMMETRIC_UNSIGNED", overrides=overrides)
 
     # Post-Linear Quantization block
-    dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
-                   torch.ones(130, 22).to(dtype=torch.long),
-                   torch.ones(130, 1, 10).to(dtype=torch.long),
-                   torch.ones(130, 22, 22).to(dtype=torch.long))
-    quantizer.prepare_model(dummy_input)
-    model = quantizer.model
+    # dummy_input = (torch.ones(130, 10).to(dtype=torch.long),
+    #                torch.ones(130, 22).to(dtype=torch.long),
+    #                torch.ones(130, 1, 10).to(dtype=torch.long),
+    #                torch.ones(130, 22, 22).to(dtype=torch.long))
+    # quantizer.prepare_model(dummy_input)
+    # model = quantizer.model
 
     model.eval()
     print(model)
